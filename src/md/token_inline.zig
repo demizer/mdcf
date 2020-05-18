@@ -3,9 +3,9 @@ const std = @import("std");
 usingnamespace @import("log.zig");
 
 const token = @import("token.zig");
-const Tokenizer = @import("token.zig").Tokenizer;
+const Lexer = @import("lexer.zig").Lexer;
 
-pub fn ruleInline(t: *Tokenizer) !?token.Token {
+pub fn ruleInline(t: *Lexer) !?token.Token {
     var index: u32 = t.index;
     while (t.getChar(index)) |val| {
         if (t.isCharacter(t.buffer[index])) {

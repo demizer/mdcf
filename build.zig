@@ -1,7 +1,7 @@
 const Builder = @import("std").build.Builder;
 
 pub fn build(b: *Builder) void {
-    const t = b.addTest("src/md/token.zig");
+    const t = b.addTest("src/md/token_atx_heading.zig");
     t.addPackagePath("zig-time", "lib/zig-time/src/time.zig");
     t.addPackagePath("zig-log", "lib/log.zig/src/index.zig");
     b.step("test", "Run all tests").dependOn(&t.step);
