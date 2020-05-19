@@ -18,6 +18,7 @@
 * [zig-window (xorg window)](https://github.com/andrewrk/zig-window)
 * [zig-regex](https://github.com/tiehuis/zig-regex)
 * [zhp (Http)](https://github.com/frmdstryr/zhp)
+* [Let's build a simple interpreter](https://ruslanspivak.com/lsbasi-part1/)
 
 
 # Things To Do

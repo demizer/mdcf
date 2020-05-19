@@ -6,8 +6,7 @@ pub const TokenId = enum {
     Whitespace,
     Line,
     LineEnding,
-    AtxHeaderOpen,
-    AtxHeaderClose,
+    AtxHeader,
     EOF,
 };
 

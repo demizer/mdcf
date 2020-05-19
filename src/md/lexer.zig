@@ -1,4 +1,5 @@
 const std = @import("std");
+const assert = std.debug.assert;
 const mem = std.mem;
 const ArrayList = std.ArrayList;
 const token = @import("token.zig");
@@ -12,8 +13,6 @@ pub const Lexer = struct {
     index: u32,
     rules: ArrayList(token.TokenRule),
     tokens: ArrayList(token.Token),
-    atxOpener: bool,
-    atxLevel: u8,
     start: u32,
 
     pub fn init(allocator: *mem.Allocator, buffer: []const u8) !Lexer {
@@ -23,8 +22,6 @@ pub const Lexer = struct {
             .index = 0,
             .rules = ArrayList(token.TokenRule).init(allocator),
             .tokens = ArrayList(token.Token).init(allocator),
-            .atxOpener = true,
-            .atxLevel = 0,
             .start = 0,
         };
         try t.registerRule(ruleWhitespace);
@@ -47,16 +44,21 @@ pub const Lexer = struct {
         return null;
     }
 
+    pub fn peekNext(self: *Lexer) !?token.Token {
+        for (self.rules.items) |rule| {
+            if (try rule(self)) |v| {
+                return v;
+            }
+        }
+        return null;
+    }
+
     /// Gets a character at index from the source buffer. Returns null if index exceeds the length of the buffer.
     pub fn getChar(self: *Lexer, index: u32) ?u8 {
         if (index >= self.buffer.len) {
             return null;
         }
         return self.buffer[index];
-    }
-
-    pub fn peekNext(self: *Lexer) u8 {
-        return self.buffer[self.index + 1];
     }
 
     pub fn emit(self: *Lexer, tok: token.TokenId, start: u32, end: u32) !?token.Token {
@@ -137,4 +139,21 @@ pub fn ruleEOF(t: *Lexer) !?token.Token {
         return t.emit(.EOF, t.index, t.index);
     }
     return null;
+}
+
+test "lexer: peekNext " {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const allocator = &arena.allocator;
+
+    // TODO: move this somplace else
+    use_rfc3339_date_handler();
+
+    const input = "# foo";
+    log.Debugf("input: {}\n-- END OF TEST --\n", .{input});
+
+    var t = try Lexer.init(allocator, input);
+    if (try t.next()) |tok| {
+        assert(tok.ID == token.TokenId.AtxHeader);
+    }
 }
