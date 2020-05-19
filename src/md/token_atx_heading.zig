@@ -39,7 +39,7 @@ test "atx headings - example 32" {
     // TODO: move this somplace else
     use_rfc3339_date_handler();
 
-    log.Debugf("test: {}\n-- END OF TEST --\n", .{out});
+    log.Debugf("test:\n{}\n-- END OF TEST --\n", .{out});
 
     var t = try Lexer.init(allocator, out);
 

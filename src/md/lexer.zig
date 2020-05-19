@@ -35,6 +35,7 @@ pub const Lexer = struct {
         try self.rules.append(rule);
     }
 
+    /// Get the next token from the input.
     pub fn next(self: *Lexer) !?token.Token {
         for (self.rules.items) |rule| {
             if (try rule(self)) |v| {
@@ -44,13 +45,12 @@ pub const Lexer = struct {
         return null;
     }
 
+    /// Peek at the next token.
     pub fn peekNext(self: *Lexer) !?token.Token {
-        for (self.rules.items) |rule| {
-            if (try rule(self)) |v| {
-                return v;
-            }
-        }
-        return null;
+        var indexBefore = self.index;
+        var pNext = try self.next();
+        self.index = indexBefore;
+        return pNext;
     }
 
     /// Gets a character at index from the source buffer. Returns null if index exceeds the length of the buffer.
@@ -150,10 +150,16 @@ test "lexer: peekNext " {
     use_rfc3339_date_handler();
 
     const input = "# foo";
-    log.Debugf("input: {}\n-- END OF TEST --\n", .{input});
+    log.Debugf("input:\n{}\n-- END OF TEST --\n", .{input});
 
     var t = try Lexer.init(allocator, input);
     if (try t.next()) |tok| {
         assert(tok.ID == token.TokenId.AtxHeader);
+    }
+    if (try t.peekNext()) |tok| {
+        assert(tok.ID == token.TokenId.Whitespace);
+    }
+    if (try t.next()) |tok| {
+        assert(tok.ID == token.TokenId.Whitespace);
     }
 }
