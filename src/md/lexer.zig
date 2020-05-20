@@ -31,6 +31,11 @@ pub const Lexer = struct {
         return t;
     }
 
+    pub fn deinit(self: *Lexer) void {
+        self.rules.deinit();
+        self.tokens.deinit();
+    }
+
     pub fn registerRule(self: *Lexer, rule: token.TokenRule) !void {
         try self.rules.append(rule);
     }

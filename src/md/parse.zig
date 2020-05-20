@@ -1,47 +1,89 @@
 const std = @import("std");
 const mem = std.mem;
+const test_util = @import("test_util.zig");
+const doc = @import("document.zig");
+const Lexer = @import("lexer.zig").Lexer;
+const TokenId = @import("token.zig").TokenId;
+usingnamespace @import("log.zig");
 
 /// Function prototype for a State Transition in the Parser
 pub const StateTransition = fn (lexer: *Lexer) anyerror!?AstNode;
 
+pub const Node = struct {
+    Id: Id,
+    Value: []const u8,
+
+    PositionStart: Position,
+    PositionEnd: Position,
+
+    Children: std.ArrayList(Node),
+
+    pub const Position = struct {
+        Line: u32,
+        Column: u32,
+        Offset: u32,
+    };
+
+    pub const Id = enum {
+        NodeAtxHeading,
+    };
+};
+
 /// A non-stream Markdown parser which constructs a tree of Nodes
 pub const Parser = struct {
-    allocator: *Allocator,
+    allocator: *mem.Allocator,
+    root: std.ArrayList(Node),
     state: State,
-    // copy_strings: bool,
-    // Stores parent nodes and un-combined Values.
-    // stack: Array,
+    lex: Lexer,
 
     const State = enum {
         Start,
     };
 
     pub fn init(
-        allocator: *Allocator,
+        allocator: *mem.Allocator,
     ) Parser {
         return Parser{
             .allocator = allocator,
             .state = .Start,
-            // .copy_strings = copy_strings,
-            // .stack = Array.init(allocator),
+            .root = std.ArrayList(Node).init(allocator),
+            .lex = undefined,
         };
     }
 
-    // pub fn deinit(p: *Parser) void {
-    //     p.stack.deinit();
-    // }
+    pub fn deinit(self: *Parser) void {
+        self.root.deinit();
+        self.lex.deinit();
+    }
 
-    // pub fn reset(p: *Parser) void {
-    //     p.state = .Simple;
-    //     p.stack.shrink(0);
-    // }
-
-    // pub fn parse(p: *Parser, input: []const u8) !ValueTree {}
+    pub fn parse(self: *Parser, input: []const u8) !void {
+        self.lex = try Lexer.init(self.allocator, input);
+        use_rfc3339_date_handler();
+        log.Debugf("input:\n{}\n-- END OF TEST --\n", .{input});
+        while (true) {
+            if (try self.lex.next()) |tok| {
+                if (tok.ID == TokenId.EOF) {
+                    log.Debug("Found EOF");
+                    break;
+                }
+            }
+        }
+    }
 };
 
 test "parser test 1" {
-    var p = Parser.init(testing.allocator, false);
-    // defer p.deinit();
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = &arena.allocator;
+    const input = try test_util.getTest(allocator, 32);
+
+    // TODO: move this somplace else
+    use_rfc3339_date_handler();
+
+    log.Debugf("test:\n{}\n-- END OF TEST --\n", .{input});
+
+    var p = Parser.init(std.testing.allocator);
+    defer p.deinit();
 
     // Used https://codebeautify.org/xmltojson to convert ast from spec to json
     const expect =
@@ -76,17 +118,5 @@ test "parser test 1" {
         \\  }
         \\}
     ;
-
-    // var tree = try p.parse(s);
-    // defer tree.deinit();
-
-    // var root = tree.root;
-
-    // var image = root.Object.get("Image").?.value;
-
-    // const width = image.Object.get("Width").?.value;
-    // testing.expect(width.Integer == 800);
-
-    // const height = image.Object.get("Height").?.value;
-    // testing.expect(height.Integer == 600);
+    var out = p.parse(input);
 }
