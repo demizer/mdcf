@@ -10,19 +10,19 @@ usingnamespace @import("log.zig");
 
 pub const Lexer = struct {
     buffer: []const u8,
-    index: u32,
+    bufIndex: u32,
     rules: ArrayList(token.TokenRule),
     tokens: ArrayList(token.Token),
-    start: u32,
+    tokenIndex: u64,
 
     pub fn init(allocator: *mem.Allocator, buffer: []const u8) !Lexer {
         // Skip the UTF-8 BOM if present
         var t = Lexer{
             .buffer = buffer,
-            .index = 0,
+            .bufIndex = 0,
             .rules = ArrayList(token.TokenRule).init(allocator),
             .tokens = ArrayList(token.Token).init(allocator),
-            .start = 0,
+            .tokenIndex = 0,
         };
         try t.registerRule(ruleWhitespace);
         try t.registerRule(atxRules.ruleAtxHeader);
@@ -31,19 +31,19 @@ pub const Lexer = struct {
         return t;
     }
 
-    pub fn deinit(self: *Lexer) void {
-        self.rules.deinit();
-        self.tokens.deinit();
+    pub fn deinit(l: *Lexer) void {
+        l.rules.deinit();
+        l.tokens.deinit();
     }
 
-    pub fn registerRule(self: *Lexer, rule: token.TokenRule) !void {
-        try self.rules.append(rule);
+    pub fn registerRule(l: *Lexer, rule: token.TokenRule) !void {
+        try l.rules.append(rule);
     }
 
     /// Get the next token from the input.
-    pub fn next(self: *Lexer) !?token.Token {
-        for (self.rules.items) |rule| {
-            if (try rule(self)) |v| {
+    pub fn next(l: *Lexer) !?token.Token {
+        for (l.rules.items) |rule| {
+            if (try rule(l)) |v| {
                 return v;
             }
         }
@@ -51,24 +51,26 @@ pub const Lexer = struct {
     }
 
     /// Peek at the next token.
-    pub fn peekNext(self: *Lexer) !?token.Token {
-        var indexBefore = self.index;
-        var pNext = try self.next();
-        self.index = indexBefore;
+    pub fn peekNext(l: *Lexer) !?token.Token {
+        var indexBefore = l.bufIndex;
+        var tokenIndexBefore = l.tokenIndex;
+        var pNext = try l.next();
+        l.bufIndex = indexBefore;
+        l.tokenIndex = tokenIndexBefore;
         return pNext;
     }
 
-    /// Gets a character at index from the source buffer. Returns null if index exceeds the length of the buffer.
-    pub fn getChar(self: *Lexer, index: u32) ?u8 {
-        if (index >= self.buffer.len) {
+    /// Gets a character at bufIndex from the source buffer. Returns null if bufIndex exceeds the length of the buffer.
+    pub fn getChar(l: *Lexer, bufIndex: u32) ?u8 {
+        if (bufIndex >= l.buffer.len) {
             return null;
         }
-        return self.buffer[index];
+        return l.buffer[bufIndex];
     }
 
-    pub fn emit(self: *Lexer, tok: token.TokenId, start: u32, end: u32) !?token.Token {
+    pub fn emit(l: *Lexer, tok: token.TokenId, start: u32, end: u32) !?token.Token {
         // log.Debugf("start: {} end: {}\n", .{ start, end });
-        var str = self.buffer[start..end];
+        var str = l.buffer[start..end];
         var newTok = token.Token{
             .ID = tok,
             .start = start,
@@ -76,13 +78,14 @@ pub const Lexer = struct {
             .string = str,
         };
         log.Debugf("emit: {}\n", .{newTok});
-        try self.tokens.append(newTok);
-        self.index = end;
+        try l.tokens.append(newTok);
+        l.bufIndex = end;
+        l.tokenIndex = l.tokens.items.len - 1;
         return newTok;
     }
 
     /// Checks for a single whitespace character. Returns true if char is a space character.
-    pub fn isSpace(self: *Lexer, char: u8) bool {
+    pub fn isSpace(l: *Lexer, char: u8) bool {
         if (char == '\u{0020}') {
             return true;
         }
@@ -90,7 +93,7 @@ pub const Lexer = struct {
     }
 
     /// Checks for all the whitespace characters. Returns true if the char is a whitespace.
-    pub fn isWhitespace(self: *Lexer, char: u8) bool {
+    pub fn isWhitespace(l: *Lexer, char: u8) bool {
         // A whitespace character is a space (U+0020), tab (U+0009), newline (U+000A), line tabulation (U+000B), form feed
         // (U+000C), or carriage return (U+000D).
         return switch (char) {
@@ -99,7 +102,7 @@ pub const Lexer = struct {
         };
     }
 
-    pub fn isPunctuation(self: *Lexer, char: u8) bool {
+    pub fn isPunctuation(l: *Lexer, char: u8) bool {
         // Check for ASCII punctuation characters...
         //
         // FIXME: Check against the unicode punctuation tables... there isn't a Zig library that does this that I have found.
@@ -112,18 +115,28 @@ pub const Lexer = struct {
         };
     }
 
-    pub fn isCharacter(self: *Lexer, char: u8) bool {
+    pub fn isCharacter(l: *Lexer, char: u8) bool {
         // TODO: make this more robust by using unicode character sets
-        if (!self.isPunctuation(char) and !self.isWhitespace(char)) {
+        if (!l.isPunctuation(char) and !l.isWhitespace(char)) {
             return true;
         }
         return false;
+    }
+
+    /// Get the last token emitted, exclude peek tokens
+    pub fn lastToken(l: *Lexer) token.Token {
+        return l.tokens.items[l.tokenIndex];
+    }
+
+    /// Skip the next token
+    pub fn skipNext(l: *Lexer) !void {
+        _ = try l.next();
     }
 };
 
 /// Get all the whitespace characters greedly.
 pub fn ruleWhitespace(t: *Lexer) !?token.Token {
-    var index: u32 = t.index;
+    var index: u32 = t.bufIndex;
     while (t.getChar(index)) |val| {
         if (t.isWhitespace(val)) {
             index += 1;
@@ -131,17 +144,17 @@ pub fn ruleWhitespace(t: *Lexer) !?token.Token {
             break;
         }
     }
-    if (index > t.index) {
-        return t.emit(.Whitespace, t.index, index);
+    if (index > t.bufIndex) {
+        return t.emit(.Whitespace, t.bufIndex, index);
     }
-    // log.Debugf("t.index: {} index: {}\n", .{ t.index, index });
+    // log.Debugf("t.bufIndex: {} index: {}\n", .{ t.bufIndex, index });
     return null;
 }
 
 /// Return EOF at the end of the input
 pub fn ruleEOF(t: *Lexer) !?token.Token {
-    if (t.index == t.buffer.len) {
-        return t.emit(.EOF, t.index, t.index);
+    if (t.bufIndex == t.buffer.len) {
+        return t.emit(.EOF, t.bufIndex, t.bufIndex);
     }
     return null;
 }
@@ -158,12 +171,21 @@ test "lexer: peekNext " {
     log.Debugf("input:\n{}\n-- END OF TEST --\n", .{input});
 
     var t = try Lexer.init(allocator, input);
+
     if (try t.next()) |tok| {
         assert(tok.ID == token.TokenId.AtxHeader);
+    }
+
+    // two consecutive peeks should return the same token
+    if (try t.peekNext()) |tok| {
+        assert(tok.ID == token.TokenId.Whitespace);
     }
     if (try t.peekNext()) |tok| {
         assert(tok.ID == token.TokenId.Whitespace);
     }
+    // The last token does not include peek'd tokens
+    assert(t.lastToken().ID == token.TokenId.AtxHeader);
+
     if (try t.next()) |tok| {
         assert(tok.ID == token.TokenId.Whitespace);
     }

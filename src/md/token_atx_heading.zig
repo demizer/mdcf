@@ -8,17 +8,17 @@ const TokenId = @import("token.zig").TokenId;
 const Lexer = @import("lexer.zig").Lexer;
 usingnamespace @import("log.zig");
 
-pub fn ruleAtxHeader(t: *Lexer) !?Token {
-    var index: u32 = t.index;
-    while (t.getChar(index)) |val| {
+pub fn ruleAtxHeader(l: *Lexer) !?Token {
+    var index: u32 = l.bufIndex;
+    while (l.getChar(index)) |val| {
         if (val == '#') {
             index += 1;
         } else {
             break;
         }
     }
-    if (index > t.index) {
-        return t.emit(.AtxHeader, t.index, index);
+    if (index > l.bufIndex) {
+        return l.emit(.AtxHeader, l.bufIndex, index);
     }
     return null;
 }

@@ -4,14 +4,16 @@ const test_util = @import("test_util.zig");
 const doc = @import("document.zig");
 const Lexer = @import("lexer.zig").Lexer;
 const TokenId = @import("token.zig").TokenId;
+
+usingnamespace @import("parse_atx_heading.zig");
 usingnamespace @import("log.zig");
 
 /// Function prototype for a State Transition in the Parser
 pub const StateTransition = fn (lexer: *Lexer) anyerror!?AstNode;
 
 pub const Node = struct {
-    Id: Id,
-    Value: []const u8,
+    ID: ID,
+    Value: ?[]const u8,
 
     PositionStart: Position,
     PositionEnd: Position,
@@ -24,8 +26,9 @@ pub const Node = struct {
         Offset: u32,
     };
 
-    pub const Id = enum {
-        NodeAtxHeading,
+    pub const ID = enum {
+        AtxHeading,
+        Text,
     };
 };
 
@@ -35,9 +38,11 @@ pub const Parser = struct {
     root: std.ArrayList(Node),
     state: State,
     lex: Lexer,
+    lineNumber: u32,
 
-    const State = enum {
+    pub const State = enum {
         Start,
+        AtxHeader,
     };
 
     pub fn init(
@@ -48,6 +53,7 @@ pub const Parser = struct {
             .state = .Start,
             .root = std.ArrayList(Node).init(allocator),
             .lex = undefined,
+            .lineNumber = 1,
         };
     }
 
@@ -62,9 +68,20 @@ pub const Parser = struct {
         log.Debugf("input:\n{}\n-- END OF TEST --\n", .{input});
         while (true) {
             if (try self.lex.next()) |tok| {
-                if (tok.ID == TokenId.EOF) {
-                    log.Debug("Found EOF");
-                    break;
+                switch (tok.ID) {
+                    .Invalid => {},
+                    .Whitespace => {},
+                    .Line => {},
+                    .LineEnding => {
+                        self.lineNumber += 1;
+                    },
+                    .AtxHeader => {
+                        try StateAtxHeader(self);
+                    },
+                    .EOF => {
+                        log.Debug("Found EOF");
+                        break;
+                    },
                 }
             }
         }
@@ -119,4 +136,7 @@ test "parser test 1" {
         \\}
     ;
     var out = p.parse(input);
+    for (p.root.items) |item| {
+        log.Debugf("item: {}\n", .{item});
+    }
 }
