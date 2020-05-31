@@ -14,6 +14,7 @@ pub const Lexer = struct {
     rules: ArrayList(token.TokenRule),
     tokens: ArrayList(token.Token),
     tokenIndex: u64,
+    lineNumber: u32,
 
     pub fn init(allocator: *mem.Allocator, buffer: []const u8) !Lexer {
         // Skip the UTF-8 BOM if present
@@ -23,6 +24,7 @@ pub const Lexer = struct {
             .rules = ArrayList(token.TokenRule).init(allocator),
             .tokens = ArrayList(token.Token).init(allocator),
             .tokenIndex = 0,
+            .lineNumber = 1,
         };
         try t.registerRule(ruleWhitespace);
         try t.registerRule(atxRules.ruleAtxHeader);
@@ -68,20 +70,71 @@ pub const Lexer = struct {
         return l.buffer[bufIndex];
     }
 
-    pub fn emit(l: *Lexer, tok: token.TokenId, start: u32, end: u32) !?token.Token {
+    pub fn emit(l: *Lexer, tok: token.TokenId, startOffset: u32, endOffset: u32) !?token.Token {
         // log.Debugf("start: {} end: {}\n", .{ start, end });
-        var str = l.buffer[start..end];
+        var str = l.buffer[startOffset..endOffset];
+        var nEndOffset: u32 = endOffset - 1;
+        if ((endOffset - startOffset) == 1 or nEndOffset < startOffset) {
+            nEndOffset = startOffset;
+        }
+        var column: u32 = l.offsetToColumn(startOffset);
+        if (tok == token.TokenId.EOF) {
+            column = l.tokens.items[l.tokens.items.len - 1].column;
+            l.lineNumber -= 1;
+        }
         var newTok = token.Token{
             .ID = tok,
-            .start = start,
-            .end = end,
+            .startOffset = startOffset,
+            .endOffset = nEndOffset,
             .string = str,
+            .lineNumber = l.lineNumber,
+            .column = column,
         };
         log.Debugf("emit: {}\n", .{newTok});
         try l.tokens.append(newTok);
-        l.bufIndex = end;
+        l.bufIndex = endOffset;
         l.tokenIndex = l.tokens.items.len - 1;
+        if (mem.eql(u8, str, "\n")) {
+            l.lineNumber += 1;
+        }
         return newTok;
+    }
+
+    /// Returns the column number of offset translated from the start of the line
+    pub fn offsetToColumn(l: *Lexer, offset: u32) u32 {
+        var i: u32 = offset;
+        var start: u32 = 1;
+        var char: u8 = 0;
+        var foundLastNewline: bool = false;
+        if (offset > 0) {
+            i = offset - 1;
+        }
+        // Get the last newline starting from offset
+        while (char != '\n') : (i -= 1) {
+            if (i == 0) {
+                break;
+            }
+            char = l.buffer[i];
+            start = i;
+        }
+        if (char == '\n') {
+            foundLastNewline = true;
+            start = i + 1;
+        }
+        char = 0;
+        i = offset;
+        // Get the next newline starting from offset
+        while (char != '\n') : (i += 1) {
+            if (i == l.buffer.len) {
+                break;
+            }
+            char = l.buffer[i];
+        }
+        // only one line of input or on the first line of input
+        if (!foundLastNewline) {
+            return offset + 1;
+        }
+        return offset - start;
     }
 
     /// Checks for a single whitespace character. Returns true if char is a space character.

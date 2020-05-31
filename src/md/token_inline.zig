@@ -15,7 +15,7 @@ pub fn ruleInline(l: *Lexer) !?token.Token {
         }
     }
     if (index > l.bufIndex) {
-        return l.emit(.Line, l.bufIndex, index);
+        return l.emit(.Text, l.bufIndex, index);
     }
     return null;
 }

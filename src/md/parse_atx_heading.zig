@@ -14,15 +14,20 @@ pub fn StateAtxHeader(p: *Parser) !void {
         if (tok.ID == TokenId.Whitespace and mem.eql(u8, tok.string, " ")) {
             log.Debug("We have a real atx header boys!");
             var openTok = p.lex.lastToken();
+            log.Debugf("bloooooooooooooooooooooooooooooooopy {}\n", .{openTok});
             var newChild = Node{
                 .ID = Node.ID.AtxHeading,
                 .Value = null,
                 .PositionStart = Node.Position{
-                    .Line = p.lineNumber,
-                    .Column = openTok.start,
-                    .Offset = openTok.start,
+                    .Line = openTok.lineNumber,
+                    .Column = openTok.column,
+                    .Offset = openTok.startOffset,
                 },
-                .PositionEnd = undefined,
+                .PositionEnd = Node.Position{
+                    .Line = openTok.lineNumber,
+                    .Column = openTok.column,
+                    .Offset = openTok.endOffset,
+                },
                 .Children = std.ArrayList(Node).init(p.allocator),
             };
             // skip the whitespace after the header opening
@@ -36,18 +41,20 @@ pub fn StateAtxHeader(p: *Parser) !void {
                     .ID = Node.ID.Text,
                     .Value = ntok.string,
                     .PositionStart = Node.Position{
-                        .Line = p.lineNumber,
-                        .Column = undefined,
-                        .Offset = ntok.start,
+                        .Line = ntok.lineNumber,
+                        .Column = ntok.column,
+                        .Offset = ntok.startOffset,
                     },
-                    .PositionEnd = undefined,
-                    .Children = undefined,
+                    .PositionEnd = Node.Position{
+                        .Line = ntok.lineNumber,
+                        .Column = ntok.column,
+                        .Offset = ntok.endOffset,
+                    },
+                    .Children = std.ArrayList(Node).init(p.allocator),
                 };
                 try p.root.append(newChild);
             }
             p.state = Parser.State.Start;
-            // return Node{};
         }
     }
-    // return null;
 }
