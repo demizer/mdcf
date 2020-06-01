@@ -12,9 +12,13 @@ pub fn StateAtxHeader(p: *Parser) !void {
     p.state = Parser.State.AtxHeader;
     if (try p.lex.peekNext()) |tok| {
         if (tok.ID == TokenId.Whitespace and mem.eql(u8, tok.string, " ")) {
-            log.Debug("We have a real atx header boys!");
             var openTok = p.lex.lastToken();
-            log.Debugf("bloooooooooooooooooooooooooooooooopy {}\n", .{openTok});
+            var i: u32 = 0;
+            var level: u32 = 0;
+            while (i < openTok.string.len) : ({
+                level += 1;
+                i += 1;
+            }) {}
             var newChild = Node{
                 .ID = Node.ID.AtxHeading,
                 .Value = null,
@@ -29,6 +33,7 @@ pub fn StateAtxHeader(p: *Parser) !void {
                     .Offset = openTok.endOffset,
                 },
                 .Children = std.ArrayList(Node).init(p.allocator),
+                .Level = level,
             };
             // skip the whitespace after the header opening
             try p.lex.skipNext();
@@ -51,9 +56,12 @@ pub fn StateAtxHeader(p: *Parser) !void {
                         .Offset = ntok.endOffset,
                     },
                     .Children = std.ArrayList(Node).init(p.allocator),
+                    .Level = level,
                 };
-                try p.root.append(newChild);
+                try newChild.Children.append(subChild);
             }
+            newChild.PositionEnd = newChild.Children.items[newChild.Children.items.len - 1].PositionEnd;
+            try p.root.append(newChild);
             p.state = Parser.State.Start;
         }
     }

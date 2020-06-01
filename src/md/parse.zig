@@ -20,6 +20,8 @@ pub const Node = struct {
 
     Children: std.ArrayList(Node),
 
+    Level: u32,
+
     pub const Position = struct {
         Line: u32,
         Column: u32,
@@ -38,6 +40,10 @@ pub const Node = struct {
         }
     };
 
+    pub fn deinit(self: *Parser) void {
+        self.Children.deinit();
+    }
+
     pub fn jsonStringify(
         value: @This(),
         options: json.StringifyOptions,
@@ -52,8 +58,6 @@ pub const Node = struct {
             child_whitespace.indent_level += 1;
         }
         inline for (S.fields) |Field, field_i| {
-            // std.debug.warn("{}", .{Field});
-            // don't include void fields
             if (Field.field_type == void) continue;
 
             if (!field_output) {
@@ -75,14 +79,16 @@ pub const Node = struct {
             if (comptime !mem.eql(u8, Field.name, "Children")) {
                 try json.stringify(@field(value, Field.name), child_options, out_stream);
             } else {
-                // _ = try out_stream.writeAll("\"boop\"");
                 var boop = @field(value, Field.name);
-                // log.Debugf("{}", .{boop.items.len});
                 if (boop.items.len == 0) {
                     _ = try out_stream.writeAll("[]");
-                    // log.Debugf("{}", .{boop});
+                } else {
+                    _ = try out_stream.write("[");
+                    for (boop.items) |item| {
+                        try json.stringify(item, child_options, out_stream);
+                    }
+                    _ = try out_stream.write("]");
                 }
-                // try json.stringify(@field(value, Field.name), child_options, out_stream);
             }
         }
         if (field_output) {
@@ -103,9 +109,6 @@ pub const Parser = struct {
     root: std.ArrayList(Node),
     state: State,
     lex: Lexer,
-    // lineNumber: u32,
-
-    // input: []const u8,
 
     pub const State = enum {
         Start,
@@ -120,17 +123,18 @@ pub const Parser = struct {
             .state = .Start,
             .root = std.ArrayList(Node).init(allocator),
             .lex = undefined,
-            // .lineNumber = 1,
         };
     }
 
     pub fn deinit(self: *Parser) void {
+        for (self.root.items) |item| {
+            item.Children.deinit();
+        }
         self.root.deinit();
         self.lex.deinit();
     }
 
     pub fn parse(self: *Parser, input: []const u8) !void {
-        // self.input = input;
         self.lex = try Lexer.init(self.allocator, input);
         use_rfc3339_date_handler();
         log.Debugf("input:\n{}\n-- END OF TEST --\n", .{input});
@@ -140,9 +144,7 @@ pub const Parser = struct {
                     .Invalid => {},
                     .Text => {},
                     .Whitespace => {
-                        if (mem.eql(u8, tok.string, "\n")) {
-                            // self.lineNumber += 1;
-                        }
+                        if (mem.eql(u8, tok.string, "\n")) {}
                     },
                     .AtxHeader => {
                         try StateAtxHeader(self);
@@ -157,7 +159,11 @@ pub const Parser = struct {
     }
 };
 
-fn testNode(expected: []const u8, value: var, options: json.StringifyOptions) !void {
+/// testNode tests parser output against a json test file containing the expected output
+/// - expected: The expected json output. Use @embedFile()!
+/// - value: The parser root to test.
+/// - dumpJson: If true, only the json value of "value" will be dumped to stdout.
+fn testNode(expected: []const u8, value: var, dumpJson: bool) !void {
     const ValidationOutStream = struct {
         const Self = @This();
         pub const OutStream = std.io.OutStream(*Self, Error, write);
@@ -167,9 +173,10 @@ fn testNode(expected: []const u8, value: var, options: json.StringifyOptions) !v
         };
 
         expected_remaining: []const u8,
+        dump: bool,
 
-        fn init(exp: []const u8) Self {
-            return .{ .expected_remaining = exp };
+        fn init(exp: []const u8, dumpJsonInner: bool) Self {
+            return .{ .expected_remaining = exp, .dump = dumpJsonInner };
         }
 
         pub fn outStream(self: *Self) OutStream {
@@ -177,51 +184,55 @@ fn testNode(expected: []const u8, value: var, options: json.StringifyOptions) !v
         }
 
         fn write(self: *Self, bytes: []const u8) Error!usize {
-            // std.debug.warn("{}\n", .{self.expected_remaining});
-            // var out = try self.outStream;
-            // out.write(bytes);
-            // return std.io.OutStream.write(bytes);
-            std.debug.warn("{}", .{bytes});
-
-            // if (self.expected_remaining.len < bytes.len) {
-            //     std.debug.warn(
-            //         \\====== expected this output: =========
-            //         \\{}
-            //         \\======== instead found this: =========
-            //         \\{}
-            //         \\======================================
-            //     , .{
-            //         self.expected_remaining,
-            //         bytes,
-            //     });
-            //     return error.TooMuchData;
-            // }
-            // if (!mem.eql(u8, self.expected_remaining[0..bytes.len], bytes)) {
-            //     std.debug.warn(
-            //         \\====== expected this output: =========
-            //         \\{}
-            //         \\======== instead found this: =========
-            //         \\{}
-            //         \\======================================
-            //     , .{
-            //         self.expected_remaining[0..bytes.len],
-            //         bytes,
-            //     });
-            //     return error.DifferentData;
-            // }
-            // self.expected_remaining = self.expected_remaining[bytes.len..];
+            if (self.dump) {
+                std.debug.warn("{}", .{bytes});
+                return bytes.len;
+            }
+            if (self.expected_remaining.len < bytes.len) {
+                std.debug.warn(
+                    \\====== expected this output: =========
+                    \\{}
+                    \\======== instead found this: =========
+                    \\{}
+                    \\======================================
+                , .{
+                    self.expected_remaining,
+                    bytes,
+                });
+                return error.TooMuchData;
+            }
+            if (!mem.eql(u8, self.expected_remaining[0..bytes.len], bytes)) {
+                std.debug.warn(
+                    \\====== expected this output: =========
+                    \\{}
+                    \\======== instead found this: =========
+                    \\{}
+                    \\======================================
+                , .{
+                    self.expected_remaining[0..bytes.len],
+                    bytes,
+                });
+                return error.DifferentData;
+            }
+            self.expected_remaining = self.expected_remaining[bytes.len..];
             return bytes.len;
         }
     };
-
-    std.debug.warn("expect: {}\ngot: ", .{expected});
-    var vos = ValidationOutStream.init(expected);
-    try json.stringify(value, options, vos.outStream());
+    if (dumpJson) {
+        log.Debug("dumped_json: ");
+    }
+    var vos = ValidationOutStream.init(expected, dumpJson);
+    try json.stringify(value, json.StringifyOptions{
+        .whitespace = .{
+            .indent = .{ .Space = 4 },
+            .separator = true,
+        },
+    }, vos.outStream());
     _ = try vos.outStream().write("\n");
-    // if (vos.expected_remaining.len > 0) return error.NotEnoughData;
+    if (vos.expected_remaining.len > 0) return error.NotEnoughData;
 }
 
-test "parser test 1" {
+test "Parser Test 32" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = &arena.allocator;
@@ -236,50 +247,11 @@ test "parser test 1" {
     defer p.deinit();
 
     // Used https://codebeautify.org/xmltojson to convert ast from spec to json
-    const expect =
-        \\{
-        \\  "heading": [
-        \\    {
-        \\      "text": "foo",
-        \\      "level": "1"
-        \\    },
-        \\    {
-        \\      "text": "foo",
-        \\      "level": "2"
-        \\    },
-        \\    {
-        \\      "text": "foo",
-        \\      "level": "3"
-        \\    },
-        \\    {
-        \\      "text": "foo",
-        \\      "level": "4"
-        \\    },
-        \\    {
-        \\      "text": "foo",
-        \\      "level": "5"
-        \\    },
-        \\    {
-        \\      "text": "foo",
-        \\      "level": "6"
-        \\    }
-        \\  ],
-        \\}
-    ;
+    const expect = @embedFile("../../test/expect/test32.json");
+
     var out = p.parse(input);
-    // for (p.root.items) |item| {
-    // log.Debugf("item: {}\n", .{item});
-    // }
-    // try testNode("{\"foo\":42}", struct {
-    //     foo: u32,
-    // }{ .foo = 42 }, json.StringifyOptions{});
-    // try testNode("{}", Node{
-    //     .ID = .AtxHeading,
-    //     .Value = "boo",
-    //     .PositionStart = undefined,
-    //     .PositionEnd = undefined,
-    //     // .Children = undefined,
-    // }, json.StringifyOptions{});
-    try testNode(expect, p.root.items, json.StringifyOptions{});
-    // std.debug.warn("{}\n", .{});
+
+    // FIXME: Would be much easier to debug if we used real json diff...
+    //        Run jsondiff in a container: https://github.com/zgrossbart/jdd or... use a zig json diff library.
+    try testNode(expect, p.root.items, false);
 }
