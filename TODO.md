@@ -25,12 +25,12 @@
 
 # Things To Do
 
-## Fri Apr 10 16:25 2020: Tokenize a simple document using tests
+## Mon Jun 01 11:29 2020: convert parse tree to html
 
-I must get the most basic document fully parsed to not fall into a trap of not seeing gratifying
-results and giving up like I did with the go-rst parser.
+## Mon Jun 01 11:30 2020: Use webview.c to display converted markdown
 
-* Parsing leaf blocks
-  * atx_headings
-  * fenced code blocks
-* Parse inline blocks (can be parallel)
+## Mon Jun 01 11:30 2020: Parse inline blocks
+
+## Mon Jun 01 11:30 2020: Parse lists
+
+## Mon Jun 01 11:31 2020: Announce on reddit
