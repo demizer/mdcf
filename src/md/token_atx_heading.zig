@@ -2,7 +2,7 @@ const std = @import("std");
 const mem = std.mem;
 const testing = std.testing;
 const assert = std.debug.assert;
-const test_util = @import("test_util.zig");
+const testUtil = @import("test_util.zig");
 const Token = @import("token.zig").Token;
 const TokenId = @import("token.zig").TokenId;
 const Lexer = @import("lexer.zig").Lexer;
@@ -37,7 +37,7 @@ test "atx headings - example 32" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = &arena.allocator;
-    const out = try test_util.getTest(allocator, 32);
+    const out = try testUtil.getTest(allocator, 32, testUtil.TestKey.markdown);
 
     // TODO: move this somplace else
     use_rfc3339_date_handler();

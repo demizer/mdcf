@@ -25,9 +25,16 @@
 
 # Things To Do
 
-## Mon Jun 01 11:29 2020: convert parse tree to html
+## Mon Jun 01 15:54 2020: Add zig-md2020 to awesome-zig
 
 ## Mon Jun 01 11:30 2020: Use webview.c to display converted markdown
+
+   * Will need to create a new webview wrapper for zig
+   * Add the wrapper to awesome-zig
+
+## Mon Jun 01 15:48 2020: move the rfc3339 handler to a singleton
+
+   Not sure how to do this yet in zig, in go there are module level init()
 
 ## Mon Jun 01 11:30 2020: Parse inline blocks
 

@@ -1,9 +1,9 @@
 const std = @import("std");
 const mem = std.mem;
-const test_util = @import("test_util.zig");
+const json = std.json;
+const testUtil = @import("test_util.zig");
 const Lexer = @import("lexer.zig").Lexer;
 const TokenId = @import("token.zig").TokenId;
-const json = std.json;
 
 usingnamespace @import("parse_atx_heading.zig");
 usingnamespace @import("log.zig");
@@ -38,6 +38,62 @@ pub const Node = struct {
         ) !void {
             try json.stringify(@tagName(value), options, out_stream);
         }
+    };
+
+    pub const StringifyOptions = struct {
+        pub const Whitespace = struct {
+            /// How many indentation levels deep are we?
+            indent_level: usize = 0,
+
+            /// What character(s) should be used for indentation?
+            indent: union(enum) {
+                Space: u8,
+                Tab: void,
+            } = .{ .Space = 4 },
+
+            /// Newline after each element
+            separator: bool = true,
+
+            pub fn outputIndent(
+                whitespace: @This(),
+                out_stream: var,
+            ) @TypeOf(out_stream).Error!void {
+                var char: u8 = undefined;
+                var n_chars: usize = undefined;
+                switch (whitespace.indent) {
+                    .Space => |n_spaces| {
+                        char = ' ';
+                        n_chars = n_spaces;
+                    },
+                    .Tab => {
+                        char = '\t';
+                        n_chars = 1;
+                    },
+                }
+                n_chars *= whitespace.indent_level;
+                try out_stream.writeByteNTimes(char, n_chars);
+            }
+        };
+
+        /// Controls the whitespace emitted
+        whitespace: ?Whitespace = null,
+
+        string: StringOptions = StringOptions{ .String = .{} },
+
+        /// Should []u8 be serialised as a string? or an array?
+        pub const StringOptions = union(enum) {
+            Array,
+            String: StringOutputOptions,
+
+            /// String output options
+            const StringOutputOptions = struct {
+                /// Should '/' be escaped in strings?
+                escape_solidus: bool = false,
+
+                /// Should unicode characters be escaped in strings?
+                escape_unicode: bool = false,
+            };
+        };
     };
 
     pub fn deinit(self: *Parser) void {
@@ -100,6 +156,27 @@ pub const Node = struct {
         try out_stream.writeByte('}');
         return;
     }
+
+    pub fn htmlStringify(
+        value: @This(),
+        options: StringifyOptions,
+        out_stream: var,
+    ) !void {
+        var child_options = options;
+        switch (value.ID) {
+            .AtxHeading => {
+                var lvl = value.Level;
+                var text = value.Children.items[0].Value;
+                _ = try out_stream.print("<h{}>{}</h{}>", .{ lvl, text, lvl });
+                if (child_options.whitespace) |child_whitespace| {
+                    if (child_whitespace.separator) {
+                        try out_stream.writeByte('\n');
+                    }
+                }
+            },
+            .Text => {},
+        }
+    }
 };
 
 /// A non-stream Markdown parser which constructs a tree of Nodes
@@ -159,84 +236,11 @@ pub const Parser = struct {
     }
 };
 
-/// testNode tests parser output against a json test file containing the expected output
-/// - expected: The expected json output. Use @embedFile()!
-/// - value: The parser root to test.
-/// - dumpJson: If true, only the json value of "value" will be dumped to stdout.
-fn testNode(expected: []const u8, value: var, dumpJson: bool) !void {
-    const ValidationOutStream = struct {
-        const Self = @This();
-        pub const OutStream = std.io.OutStream(*Self, Error, write);
-        pub const Error = error{
-            TooMuchData,
-            DifferentData,
-        };
-
-        expected_remaining: []const u8,
-        dump: bool,
-
-        fn init(exp: []const u8, dumpJsonInner: bool) Self {
-            return .{ .expected_remaining = exp, .dump = dumpJsonInner };
-        }
-
-        pub fn outStream(self: *Self) OutStream {
-            return .{ .context = self };
-        }
-
-        fn write(self: *Self, bytes: []const u8) Error!usize {
-            if (self.dump) {
-                std.debug.warn("{}", .{bytes});
-                return bytes.len;
-            }
-            if (self.expected_remaining.len < bytes.len) {
-                std.debug.warn(
-                    \\====== expected this output: =========
-                    \\{}
-                    \\======== instead found this: =========
-                    \\{}
-                    \\======================================
-                , .{
-                    self.expected_remaining,
-                    bytes,
-                });
-                return error.TooMuchData;
-            }
-            if (!mem.eql(u8, self.expected_remaining[0..bytes.len], bytes)) {
-                std.debug.warn(
-                    \\====== expected this output: =========
-                    \\{}
-                    \\======== instead found this: =========
-                    \\{}
-                    \\======================================
-                , .{
-                    self.expected_remaining[0..bytes.len],
-                    bytes,
-                });
-                return error.DifferentData;
-            }
-            self.expected_remaining = self.expected_remaining[bytes.len..];
-            return bytes.len;
-        }
-    };
-    if (dumpJson) {
-        log.Debug("dumped_json: ");
-    }
-    var vos = ValidationOutStream.init(expected, dumpJson);
-    try json.stringify(value, json.StringifyOptions{
-        .whitespace = .{
-            .indent = .{ .Space = 4 },
-            .separator = true,
-        },
-    }, vos.outStream());
-    _ = try vos.outStream().write("\n");
-    if (vos.expected_remaining.len > 0) return error.NotEnoughData;
-}
-
 test "Parser Test 32" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = &arena.allocator;
-    const input = try test_util.getTest(allocator, 32);
+    const input = try testUtil.getTest(allocator, 32, testUtil.TestKey.markdown);
 
     // TODO: move this somplace else
     use_rfc3339_date_handler();
@@ -253,5 +257,5 @@ test "Parser Test 32" {
 
     // FIXME: Would be much easier to debug if we used real json diff...
     //        Run jsondiff in a container: https://github.com/zgrossbart/jdd or... use a zig json diff library.
-    try testNode(expect, p.root.items, false);
+    try testUtil.testJsonExpect(expect, p.root.items, false);
 }
