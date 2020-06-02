@@ -2,8 +2,7 @@ const std = @import("std");
 const mem = std.mem;
 const parser = @import("parse.zig");
 const testUtil = @import("test_util.zig");
-
-usingnamespace @import("log.zig");
+const log = @import("log.zig");
 
 pub fn markdownToHtml(allocator: *mem.Allocator, parserContext: parser.Parser, outStream: var) !void {
     for (parserContext.root.items) |item| {
@@ -37,8 +36,6 @@ test "Test Convert HTML 32" {
         testUtil.TestKey.html,
     );
 
-    // TODO: move this somplace else
-    use_rfc3339_date_handler();
     log.Debugf("test:\n{}\n-- END OF TEST --\n", .{input});
 
     var p = parser.Parser.init(std.testing.allocator);

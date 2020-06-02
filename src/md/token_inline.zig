@@ -1,7 +1,5 @@
 const std = @import("std");
-
-usingnamespace @import("log.zig");
-
+const log = @import("log.zig");
 const token = @import("token.zig");
 const Lexer = @import("lexer.zig").Lexer;
 

@@ -4,9 +4,9 @@ const json = std.json;
 const testUtil = @import("test_util.zig");
 const Lexer = @import("lexer.zig").Lexer;
 const TokenId = @import("token.zig").TokenId;
+const log = @import("log.zig");
 
 usingnamespace @import("parse_atx_heading.zig");
-usingnamespace @import("log.zig");
 
 /// Function prototype for a State Transition in the Parser
 pub const StateTransition = fn (lexer: *Lexer) anyerror!?AstNode;
@@ -213,7 +213,6 @@ pub const Parser = struct {
 
     pub fn parse(self: *Parser, input: []const u8) !void {
         self.lex = try Lexer.init(self.allocator, input);
-        use_rfc3339_date_handler();
         log.Debugf("input:\n{}\n-- END OF TEST --\n", .{input});
         while (true) {
             if (try self.lex.next()) |tok| {
@@ -241,9 +240,6 @@ test "Parser Test 32" {
     defer arena.deinit();
     const allocator = &arena.allocator;
     const input = try testUtil.getTest(allocator, 32, testUtil.TestKey.markdown);
-
-    // TODO: move this somplace else
-    use_rfc3339_date_handler();
 
     log.Debugf("test:\n{}\n-- END OF TEST --\n", .{input});
 

@@ -4,6 +4,11 @@ const fs = std.fs;
 const math = std.math;
 const process = std.process;
 const md = @import("md/markdown.zig").Markdown;
+const log = @import("md/log.zig");
+
+var DEBUG = false;
+var LOG_LEVEL = log.logger.Level.Error;
+var LOG_DATESTAMP = true;
 
 const Cmd = enum {
     View,
@@ -34,6 +39,8 @@ pub fn main() anyerror!void {
 
     var input_files = std.ArrayList([]const u8).init(allocator);
 
+    log.config(LOG_LEVEL, LOG_DATESTAMP);
+
     while (arg_i < args.len) : (arg_i += 1) {
         const full_arg = args[arg_i];
         if (mem.startsWith(u8, full_arg, "--")) {
@@ -41,15 +48,25 @@ pub fn main() anyerror!void {
             if (mem.eql(u8, arg, "help")) {
                 try dumpUsage(std.io.getStdOut());
                 return;
+            } else if (mem.eql(u8, arg, "debug")) {
+                DEBUG = true;
+                LOG_LEVEL = log.logger.Level.Debug;
+                log.config(LOG_LEVEL, LOG_DATESTAMP);
             } else {
-                std.debug.warn("Invalid parameter: {}\n", .{full_arg});
+                log.Errorf("Invalid parameter: {}\n", .{full_arg});
                 dumpStdErrUsageAndExit();
+            }
+        } else if (mem.startsWith(u8, full_arg, "-")) {
+            const arg = full_arg[1..];
+            if (mem.eql(u8, arg, "h")) {
+                try dumpUsage(std.io.getStdOut());
+                return;
             }
         } else if (maybe_cmd == null) {
             inline for (std.meta.fields(Cmd)) |field| {
                 if (mem.eql(u8, full_arg, field.name)) {
                     maybe_cmd = @field(Cmd, field.name);
-                    std.debug.warn("Have command: {}\n", .{field.name});
+                    log.Infof("Have command: {}\n", .{field.name});
                     break;
                 }
                 // } else {
@@ -60,6 +77,16 @@ pub fn main() anyerror!void {
                 _ = try input_files.append(full_arg);
             }
         }
+    }
+
+    if (args.len <= 1) {
+        log.Error("No arguments given!\n");
+        dumpStdErrUsageAndExit();
+    }
+
+    if (input_files.items.len == 0) {
+        log.Error("No input files were given!\n");
+        dumpStdErrUsageAndExit();
     }
 
     // const cmd = maybe_cmd orelse {
@@ -92,7 +119,8 @@ fn dumpUsage(file: fs.File) !void {
         \\  view                  Show the translated markdown in webview.
         \\
         \\Options:
-        \\  --help                dump this help text to stdout
+        \\  -h, --help            Dump this help text to stdout.
+        \\  --debug               Show debug output.
         \\
     );
 }

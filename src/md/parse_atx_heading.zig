@@ -5,8 +5,7 @@ const Parser = @import("parse.zig").Parser;
 const Node = @import("parse.zig").Node;
 const Lexer = @import("lexer.zig").Lexer;
 const TokenId = @import("token.zig").TokenId;
-
-usingnamespace @import("log.zig");
+const log = @import("log.zig");
 
 pub fn StateAtxHeader(p: *Parser) !void {
     p.state = Parser.State.AtxHeader;

@@ -5,8 +5,7 @@ const ArrayList = std.ArrayList;
 const token = @import("token.zig");
 const atxRules = @import("token_atx_heading.zig");
 const inlineRules = @import("token_inline.zig");
-
-usingnamespace @import("log.zig");
+const log = @import("log.zig");
 
 pub const Lexer = struct {
     buffer: []const u8,
@@ -216,9 +215,6 @@ test "lexer: peekNext " {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
     const allocator = &arena.allocator;
-
-    // TODO: move this somplace else
-    use_rfc3339_date_handler();
 
     const input = "# foo";
     log.Debugf("input:\n{}\n-- END OF TEST --\n", .{input});

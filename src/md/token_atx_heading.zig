@@ -6,7 +6,7 @@ const testUtil = @import("test_util.zig");
 const Token = @import("token.zig").Token;
 const TokenId = @import("token.zig").TokenId;
 const Lexer = @import("lexer.zig").Lexer;
-usingnamespace @import("log.zig");
+const log = @import("log.zig");
 
 pub fn ruleAtxHeader(l: *Lexer) !?Token {
     var index: u32 = l.bufIndex;
@@ -38,9 +38,6 @@ test "atx headings - example 32" {
     defer arena.deinit();
     const allocator = &arena.allocator;
     const out = try testUtil.getTest(allocator, 32, testUtil.TestKey.markdown);
-
-    // TODO: move this somplace else
-    use_rfc3339_date_handler();
 
     log.Debugf("test:\n{}\n-- END OF TEST --\n", .{out});
 

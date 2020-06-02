@@ -3,8 +3,7 @@ const fs = std.fs;
 const mem = std.mem;
 const math = std.math;
 const json = std.json;
-
-usingnamespace @import("log.zig");
+const log = @import("log.zig");
 
 const TestError = error{TestNotFound};
 
