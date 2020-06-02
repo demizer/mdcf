@@ -1,23 +1,33 @@
 const std = @import("std");
-const log = @import("log/log.zig");
 const mem = std.mem;
 const fs = std.fs;
 const math = std.math;
 const process = std.process;
-const debug = @import("debug.zig");
-const Tokenizer = @import("md/token.zig").Tokenizer;
+const md = @import("md/markdown.zig").Markdown;
 
 const Cmd = enum {
-    dump,
-    tokenize,
+    View,
 };
+
+fn translate(allocator: *mem.Allocator, input_files: *std.ArrayList([]const u8)) !void {
+    const stdout = &std.io.getStdOut().outStream();
+    const cwd = fs.cwd();
+    for (input_files.items) |input_file| {
+        const source = try cwd.readFileAlloc(allocator, input_file, math.maxInt(usize));
+        // try stdout.print("File: {}\nSource:\n````\n{}````\n", .{ input_file, source });
+        try md.renderToHtml(
+            allocator,
+            source,
+            stdout,
+        );
+    }
+}
 
 pub fn main() anyerror!void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = &arena.allocator;
 
-    var debug_errors = false;
     const args = try process.argsAlloc(allocator);
     var arg_i: usize = 1;
     var maybe_cmd: ?Cmd = null;
@@ -31,8 +41,6 @@ pub fn main() anyerror!void {
             if (mem.eql(u8, arg, "help")) {
                 try dumpUsage(std.io.getStdOut());
                 return;
-            } else if (mem.eql(u8, arg, "debug-errors")) {
-                debug_errors = true;
             } else {
                 std.debug.warn("Invalid parameter: {}\n", .{full_arg});
                 dumpStdErrUsageAndExit();
@@ -44,44 +52,29 @@ pub fn main() anyerror!void {
                     std.debug.warn("Have command: {}\n", .{field.name});
                     break;
                 }
+                // } else {
+                //     std.debug.warn("Invalid command: {}\n", .{full_arg});
+                //     dumpStdErrUsageAndExit();
+                // }
             } else {
-                std.debug.warn("Invalid command: {}\n", .{full_arg});
-                dumpStdErrUsageAndExit();
+                _ = try input_files.append(full_arg);
             }
-        } else {
-            _ = try input_files.append(full_arg);
         }
     }
 
-    const cmd = maybe_cmd orelse {
-        std.debug.warn("Expected a command parameter\n", .{});
-        dumpStdErrUsageAndExit();
-    };
+    // const cmd = maybe_cmd orelse {
+    //     std.debug.warn("Expected a command parameter\n", .{});
+    //     dumpStdErrUsageAndExit();
+    // };
 
-    switch (cmd) {
-        .dump => {
-            // log.Info("FOO");
-            // log.Info("BAR");
-            // log.Warn("BAZ");
-            // log.Error("An error occurred!");
-            return;
-        },
-        .tokenize => {
-            const stdout = &std.io.getStdOut().outStream();
-            const cwd = fs.cwd();
-            for (input_files.items) |input_file| {
-                const source = try cwd.readFileAlloc(allocator, input_file, math.maxInt(usize));
-                try stdout.print("File: {}\nSource:\n````\n{}````\n", .{ input_file, source });
-                var tokenizer = Tokenizer.init(allocator, source);
-                while (true) {
-                    const token = tokenizer.next();
-                    // if (token.id == .eof) break;
-                    // try stdout.print("{}: {}\n", .{ @tagName(token.id), source[token.start..token.end] });
-                }
-            }
-            return;
-        },
-    }
+    // switch (cmd) {
+    //     .tokenize => {
+    //         return;
+    //     },
+    //     else => {},
+    // }
+
+    try translate(allocator, &input_files);
 }
 
 fn dumpStdErrUsageAndExit() noreturn {
@@ -93,13 +86,13 @@ fn dumpUsage(file: fs.File) !void {
     _ = try file.write(
         \\Usage: mdcf [command] [options] <input>
         \\
+        \\If no commands are specified, the html translated markdown is dumped to stdout.
+        \\
         \\Commands:
-        \\  dump                 Dump translated output to stdout
-        \\  tokenize             (debug) tokenize the input files
+        \\  view                  Show the translated markdown in webview.
         \\
         \\Options:
         \\  --help                dump this help text to stdout
-        \\  --debug-errors        show stack trace on error
         \\
     );
 }
