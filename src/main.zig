@@ -11,7 +11,7 @@ var LOG_LEVEL = log.logger.Level.Error;
 var LOG_DATESTAMP = true;
 
 const Cmd = enum {
-    View,
+    view,
 };
 
 fn translate(allocator: *mem.Allocator, input_files: *std.ArrayList([]const u8)) !void {
@@ -62,19 +62,20 @@ pub fn main() anyerror!void {
                 try dumpUsage(std.io.getStdOut());
                 return;
             }
-        } else if (maybe_cmd == null) {
+        } else {
             inline for (std.meta.fields(Cmd)) |field| {
+                log.Debugf("full_arg: {} field: {}\n", .{ full_arg, field });
                 if (mem.eql(u8, full_arg, field.name)) {
                     maybe_cmd = @field(Cmd, field.name);
                     log.Infof("Have command: {}\n", .{field.name});
                     break;
+                    // } else {
+                    //     std.debug.warn("Invalid command: {}\n", .{full_arg});
+                    //     dumpStdErrUsageAndExit();
+                    // }
+                } else {
+                    _ = try input_files.append(full_arg);
                 }
-                // } else {
-                //     std.debug.warn("Invalid command: {}\n", .{full_arg});
-                //     dumpStdErrUsageAndExit();
-                // }
-            } else {
-                _ = try input_files.append(full_arg);
             }
         }
     }
@@ -89,17 +90,15 @@ pub fn main() anyerror!void {
         dumpStdErrUsageAndExit();
     }
 
-    // const cmd = maybe_cmd orelse {
-    //     std.debug.warn("Expected a command parameter\n", .{});
-    //     dumpStdErrUsageAndExit();
-    // };
-
-    // switch (cmd) {
-    //     .tokenize => {
-    //         return;
-    //     },
-    //     else => {},
-    // }
+    if (maybe_cmd) |cmd| {
+        switch (cmd) {
+            .view => {
+                log.Error("Boo");
+                // return;
+            },
+            else => {},
+        }
+    }
 
     try translate(allocator, &input_files);
 }
