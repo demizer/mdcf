@@ -5,6 +5,7 @@ const math = std.math;
 const process = std.process;
 const md = @import("md/markdown.zig").Markdown;
 const log = @import("md/log.zig");
+const webview = @import("webview/webview.zig");
 
 var DEBUG = false;
 var LOG_LEVEL = log.logger.Level.Error;
@@ -90,17 +91,20 @@ pub fn main() anyerror!void {
         dumpStdErrUsageAndExit();
     }
 
+    try translate(allocator, &input_files);
+
     if (maybe_cmd) |cmd| {
         switch (cmd) {
             .view => {
                 log.Error("Boo");
+                var handle = webview.webview("Foo", "https://google.com", 800, 400, 1);
+                // webview.webview_set_title(handle, "Foo");
+                // webview.webview_run(handle);
                 // return;
             },
             else => {},
         }
     }
-
-    try translate(allocator, &input_files);
 }
 
 fn dumpStdErrUsageAndExit() noreturn {
