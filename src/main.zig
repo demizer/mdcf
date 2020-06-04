@@ -97,9 +97,9 @@ pub fn main() anyerror!void {
         switch (cmd) {
             .view => {
                 log.Error("Boo");
-                var handle = webview.webview("Foo", "https://google.com", 800, 400, 1);
-                // webview.webview_set_title(handle, "Foo");
-                // webview.webview_run(handle);
+                var handle = webview.webview_create(1, null);
+                webview.webview_set_title(handle, "Foo");
+                webview.webview_run(handle);
                 // return;
             },
             else => {},

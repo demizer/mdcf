@@ -1,20 +1,18 @@
 const std = @import("std");
 const Builder = @import("std").build.Builder;
 
-fn addWebviewDeps(exe: *std.build.LibExeObjStep) void {
+fn addWebviewDeps(exe: *std.build.LibExeObjStep, webviewObjStep: *std.build.Step) void {
+    exe.step.dependOn(webviewObjStep);
     exe.addIncludeDir("src/webview");
-    exe.linkLibC();
-    exe.c_macros.append("WEBVIEW_GTK") catch unreachable;
-    // exe.c_macros.append("WEBVIEW_STATIC") catch unreachable;
-    exe.c_macros.append("WEBVIEW_IMPLEMENTATION") catch unreachable;
-    // exe.linkSystemLibrary("libcxx");
+    exe.addObjectFile("src/webview/webview.o");
+    exe.linkSystemLibrary("c++");
     exe.linkSystemLibrary("gtk+-3.0");
     exe.linkSystemLibrary("webkit2gtk-4.0");
 }
 
 pub fn build(b: *Builder) void {
     {
-        b.verbose_cc = true;
+        // b.verbose_cc = true;
         const mode = b.standardReleaseOptions();
         const mdView = b.addExecutable("mdv", "src/main.zig");
         mdView.setBuildMode(mode);
@@ -22,7 +20,8 @@ pub fn build(b: *Builder) void {
         mdView.addPackagePath("mylog", "src/log/log.zig");
         mdView.addPackagePath("zig-time", "lib/zig-time/src/time.zig");
         mdView.c_std = Builder.CStd.C11;
-        addWebviewDeps(mdView);
+        const webviewObjStep = WebviewLibraryStep.create(b);
+        addWebviewDeps(mdView, &webviewObjStep.step);
         mdView.install();
         const run_cmd = mdView.run();
         run_cmd.step.dependOn(b.getInstallStep());
@@ -38,3 +37,47 @@ pub fn build(b: *Builder) void {
         b.step("test", "Run all tests").dependOn(&mdTest.step);
     }
 }
+
+const WebviewLibraryStep = struct {
+    builder: *std.build.Builder,
+    step: std.build.Step,
+
+    fn create(builder: *std.build.Builder) *WebviewLibraryStep {
+        const self = builder.allocator.create(WebviewLibraryStep) catch unreachable;
+        self.* = init(builder);
+        return self;
+    }
+
+    fn init(builder: *std.build.Builder) WebviewLibraryStep {
+        return WebviewLibraryStep{
+            .builder = builder,
+            .step = std.build.Step.init(std.build.Step.Id.LibExeObj, "Webview Library Compile", builder.allocator, make),
+        };
+    }
+
+    fn make(step: *std.build.Step) !void {
+        const self = @fieldParentPtr(WebviewLibraryStep, "step", step);
+        const libs = std.fmt.trim(try self.builder.exec(
+            &[_][]const u8{ "pkg-config", "--cflags", "--libs", "gtk+-3.0", "webkit2gtk-4.0" },
+        ));
+
+        var cmd = std.ArrayList([]const u8).init(self.builder.allocator);
+        defer cmd.deinit();
+
+        try cmd.append("zig");
+        try cmd.append("c++");
+        // try cmd.append("-v");
+        try cmd.append("-c");
+        try cmd.append("src/webview/webview.cc");
+        try cmd.append("-DWEBVIEW_GTK");
+        try cmd.append("-std=c++11");
+        var line_it = std.mem.tokenize(libs, " ");
+        while (line_it.next()) |item| {
+            try cmd.append(item);
+        }
+        try cmd.append("-o");
+        try cmd.append("src/webview/webview.o");
+
+        _ = std.fmt.trim(try self.builder.exec(cmd.items));
+    }
+};
