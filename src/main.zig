@@ -15,8 +15,10 @@ const Cmd = enum {
     view,
 };
 
-fn translate(allocator: *mem.Allocator, input_files: *std.ArrayList([]const u8)) !void {
-    const stdout = &std.io.getStdOut().outStream();
+/// Translates markdown input_files into html, returns a slice. Caller ows the memory.
+fn translate(allocator: *mem.Allocator, input_files: *std.ArrayList([]const u8)) ![]const u8 {
+    var str = std.ArrayList(u8).init(allocator);
+    defer str.deinit();
     const cwd = fs.cwd();
     for (input_files.items) |input_file| {
         const source = try cwd.readFileAlloc(allocator, input_file, math.maxInt(usize));
@@ -24,9 +26,10 @@ fn translate(allocator: *mem.Allocator, input_files: *std.ArrayList([]const u8))
         try md.renderToHtml(
             allocator,
             source,
-            stdout,
+            str.outStream(),
         );
     }
+    return str.toOwnedSlice();
 }
 
 pub fn main() anyerror!void {
@@ -91,16 +94,42 @@ pub fn main() anyerror!void {
         dumpStdErrUsageAndExit();
     }
 
-    try translate(allocator, &input_files);
+    var html = try std.ArrayListSentineled(u8, 0).init(allocator, "");
+    defer html.deinit();
+
+    const translated: []const u8 = try translate(allocator, &input_files);
+    defer allocator.free(translated);
+
+    const yava_script =
+        \\ window.onload = function() {
+        \\ };
+    ;
+
+    try std.fmt.format(html.outStream(),
+        \\ data:text/html,
+        \\ <!doctype html>
+        \\ <html>
+        \\ <body>
+        \\ {}
+        \\ </body>
+        \\ <script>
+        \\ {}
+        \\ </script>
+        \\ </html>
+    , .{ translated, yava_script });
+
+    const final_doc = mem.span(@ptrCast([*c]const u8, html.span()));
+    log.Debugf("final_doc: {} type: {}\n", .{ final_doc, @typeInfo(@TypeOf(final_doc)) });
 
     if (maybe_cmd) |cmd| {
         switch (cmd) {
             .view => {
-                log.Error("Boo");
                 var handle = webview.webview_create(1, null);
-                webview.webview_set_title(handle, "Foo");
+                webview.webview_set_size(handle, 1240, 1400, webview.WEBVIEW_HINT_MIN);
+                webview.webview_set_title(handle, "Zig Markdown Viewer");
+                webview.webview_navigate(handle, final_doc);
                 webview.webview_run(handle);
-                // return;
+                return;
             },
             else => {},
         }
