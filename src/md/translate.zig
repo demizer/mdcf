@@ -2,10 +2,11 @@ const std = @import("std");
 const mem = std.mem;
 const parser = @import("parse.zig");
 const testUtil = @import("test_util.zig");
+const Node = @import("parse.zig").Node;
 const log = @import("log.zig");
 
-pub fn markdownToHtml(allocator: *mem.Allocator, parserContext: parser.Parser, outStream: var) !void {
-    for (parserContext.root.items) |item| {
+pub fn markdownToHtml(nodeList: *std.ArrayList(Node), outStream: var) !void {
+    for (nodeList.items) |item| {
         try parser.Node.htmlStringify(
             item,
             parser.Node.StringifyOptions{

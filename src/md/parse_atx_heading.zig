@@ -7,7 +7,7 @@ const Lexer = @import("lexer.zig").Lexer;
 const TokenId = @import("token.zig").TokenId;
 const log = @import("log.zig");
 
-pub fn StateAtxHeader(p: *Parser) !void {
+pub fn stateAtxHeader(p: *Parser) !void {
     p.state = Parser.State.AtxHeader;
     if (try p.lex.peekNext()) |tok| {
         if (tok.ID == TokenId.Whitespace and mem.eql(u8, tok.string, " ")) {

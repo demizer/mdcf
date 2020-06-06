@@ -6,6 +6,7 @@ const testUtil = @import("test_util.zig");
 const Token = @import("token.zig").Token;
 const TokenId = @import("token.zig").TokenId;
 const Lexer = @import("lexer.zig").Lexer;
+const checkToken = @import("lexer.zig").checkToken;
 const log = @import("log.zig");
 
 pub fn ruleAtxHeader(l: *Lexer) !?Token {
@@ -21,16 +22,6 @@ pub fn ruleAtxHeader(l: *Lexer) !?Token {
         return l.emit(.AtxHeader, l.bufIndex, index);
     }
     return null;
-}
-
-fn checkToken(val: Token, expect: Token) void {
-    log.Debugf("got: {}\n", .{val});
-    assert(val.ID == expect.ID);
-    assert(val.startOffset == expect.startOffset);
-    assert(val.endOffset == expect.endOffset);
-    assert(val.column == expect.column);
-    assert(val.lineNumber == expect.lineNumber);
-    assert(mem.eql(u8, val.string, expect.string));
 }
 
 test "atx headings - example 32" {

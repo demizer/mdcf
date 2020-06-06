@@ -7,17 +7,6 @@ pub const TokenId = enum {
     Text,
     AtxHeader,
     EOF,
-    // const Self = @This();
-
-    // pub fn jsonStringify(
-    //     value: Self,
-    //     options: StringifyOptions,
-    //     out_stream: var,
-    // ) !void {
-    //     try out_stream.writeAll("[\"something special\",");
-    //     try stringify(42, options, out_stream);
-    //     try out_stream.writeByte(']');
-    // }
 };
 
 pub const Token = struct {
@@ -27,18 +16,6 @@ pub const Token = struct {
     string: []const u8,
     lineNumber: u32,
     column: u32,
-
-    // const Self = @This();
-
-    // pub fn jsonStringify(
-    //     value: Self,
-    //     options: StringifyOptions,
-    //     out_stream: var,
-    // ) !void {
-    //     try out_stream.writeAll("[\"something special\",");
-    //     try stringify(42, options, out_stream);
-    //     try out_stream.writeByte(']');
-    // }
 };
 
 pub const TokenRule = fn (lexer: *Lexer) anyerror!?Token;

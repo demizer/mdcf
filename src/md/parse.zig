@@ -7,6 +7,7 @@ const TokenId = @import("token.zig").TokenId;
 const log = @import("log.zig");
 
 usingnamespace @import("parse_atx_heading.zig");
+usingnamespace @import("parse_codeblock.zig");
 
 /// Function prototype for a State Transition in the Parser
 pub const StateTransition = fn (lexer: *Lexer) anyerror!?AstNode;
@@ -31,6 +32,7 @@ pub const Node = struct {
     pub const ID = enum {
         AtxHeading,
         Text,
+        CodeBlock,
         pub fn jsonStringify(
             value: ID,
             options: json.StringifyOptions,
@@ -96,7 +98,7 @@ pub const Node = struct {
         };
     };
 
-    pub fn deinit(self: *Parser) void {
+    pub fn deinit(self: @This()) void {
         self.Children.deinit();
     }
 
@@ -174,6 +176,16 @@ pub const Node = struct {
                     }
                 }
             },
+            .CodeBlock => {
+                var lvl = value.Level;
+                var text = value.Children.items[0].Value;
+                _ = try out_stream.print("<pre><code>{}</code></pre>", .{text});
+                if (child_options.whitespace) |child_whitespace| {
+                    if (child_whitespace.separator) {
+                        try out_stream.writeByte('\n');
+                    }
+                }
+            },
             .Text => {},
         }
     }
@@ -190,6 +202,7 @@ pub const Parser = struct {
     pub const State = enum {
         Start,
         AtxHeader,
+        CodeBlock,
     };
 
     pub fn init(
@@ -205,7 +218,17 @@ pub const Parser = struct {
 
     pub fn deinit(self: *Parser) void {
         for (self.root.items) |item| {
-            item.Children.deinit();
+            // log.Debugf("{}\n", .{@typeInfo(@TypeOf(item.Value))});
+            // if (item.Value) |val| {
+            //     self.allocator.free(val);
+            // }
+            for (item.Children.items) |subchild| {
+                if (subchild.Value) |val| {
+                    self.allocator.free(val);
+                }
+                subchild.deinit();
+            }
+            item.deinit();
         }
         self.root.deinit();
         self.lex.deinit();
@@ -213,17 +236,18 @@ pub const Parser = struct {
 
     pub fn parse(self: *Parser, input: []const u8) !void {
         self.lex = try Lexer.init(self.allocator, input);
-        log.Debugf("input:\n{}\n-- END OF TEST --\n", .{input});
+        // log.Debugf("input:\n{}-- END OF TEST --\n", .{input});
         while (true) {
             if (try self.lex.next()) |tok| {
                 switch (tok.ID) {
                     .Invalid => {},
                     .Text => {},
                     .Whitespace => {
-                        if (mem.eql(u8, tok.string, "\n")) {}
+                        try stateCodeBlock(self);
+                        // if (mem.eql(u8, tok.string, "\n")) {}
                     },
                     .AtxHeader => {
-                        try StateAtxHeader(self);
+                        try stateAtxHeader(self);
                     },
                     .EOF => {
                         log.Debug("Found EOF");

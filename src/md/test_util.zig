@@ -4,6 +4,8 @@ const mem = std.mem;
 const math = std.math;
 const json = std.json;
 const log = @import("log.zig");
+const translate = @import("translate.zig");
+const Node = @import("parse.zig").Node;
 
 const TestError = error{TestNotFound};
 
@@ -77,8 +79,8 @@ const ValidationOutStream = struct {
                 });
                 return error.DifferentData;
             }
+            self.expected_remaining = self.expected_remaining[bytes.len..];
         }
-        self.expected_remaining = self.expected_remaining[bytes.len..];
         return bytes.len;
     }
 };
@@ -99,19 +101,33 @@ pub fn testJsonExpect(expected: []const u8, value: var, dumpJson: bool) !void {
         },
     }, vos.outStream());
     _ = try vos.outStream().write("\n");
-    if (vos.expected_remaining.len > 0) return error.NotEnoughData;
+    if (!dumpJson) {
+        if (vos.expected_remaining.len > 0) return error.NotEnoughData;
+    } else {
+        return error.DumpJsonEnabled;
+    }
 }
 
 /// testHtml tests parser output against a json test file containing the expected output
 /// - expected: The expected html output. Use @embedFile()!
 /// - value: The translated parser output.
 /// - dumpHtml: If true, only the json value of "value" will be dumped to stdout.
-pub fn testHtmlExpect(expected: []const u8, value: []const u8, dumpHtml: bool) !void {
+pub fn testHtmlExpect(allocator: *std.mem.Allocator, expected: []const u8, value: *std.ArrayList(Node), dumpHtml: bool) !void {
     if (dumpHtml) {
         log.Debugf("expect: {}\ngot: ", .{expected});
     }
     var vos = ValidationOutStream.init(expected, dumpHtml);
-    _ = try vos.outStream().write(value);
+
+    var buf = std.ArrayList(u8).init(allocator);
+    defer buf.deinit();
+
+    try translate.markdownToHtml(value, buf.outStream());
+
+    _ = try vos.outStream().write(buf.items);
     // _ = try vos.outStream().write("\n");
-    if (vos.expected_remaining.len > 0) return error.NotEnoughData;
+    if (!dumpHtml) {
+        if (vos.expected_remaining.len > 0) return error.NotEnoughData;
+    } else {
+        return error.DumpHtmlEnabled;
+    }
 }

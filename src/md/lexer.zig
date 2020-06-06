@@ -2,16 +2,19 @@ const std = @import("std");
 const assert = std.debug.assert;
 const mem = std.mem;
 const ArrayList = std.ArrayList;
-const token = @import("token.zig");
+const Token = @import("token.zig").Token;
+const TokenRule = @import("token.zig").TokenRule;
+const TokenId = @import("token.zig").TokenId;
 const atxRules = @import("token_atx_heading.zig");
 const inlineRules = @import("token_inline.zig");
 const log = @import("log.zig");
+const testUtil = @import("test_util.zig");
 
 pub const Lexer = struct {
     buffer: []const u8,
     bufIndex: u32,
-    rules: ArrayList(token.TokenRule),
-    tokens: ArrayList(token.Token),
+    rules: ArrayList(TokenRule),
+    tokens: ArrayList(Token),
     tokenIndex: u64,
     lineNumber: u32,
 
@@ -20,8 +23,8 @@ pub const Lexer = struct {
         var t = Lexer{
             .buffer = buffer,
             .bufIndex = 0,
-            .rules = ArrayList(token.TokenRule).init(allocator),
-            .tokens = ArrayList(token.Token).init(allocator),
+            .rules = ArrayList(TokenRule).init(allocator),
+            .tokens = ArrayList(Token).init(allocator),
             .tokenIndex = 0,
             .lineNumber = 1,
         };
@@ -37,12 +40,12 @@ pub const Lexer = struct {
         l.tokens.deinit();
     }
 
-    pub fn registerRule(l: *Lexer, rule: token.TokenRule) !void {
+    pub fn registerRule(l: *Lexer, rule: TokenRule) !void {
         try l.rules.append(rule);
     }
 
     /// Get the next token from the input.
-    pub fn next(l: *Lexer) !?token.Token {
+    pub fn next(l: *Lexer) !?Token {
         for (l.rules.items) |rule| {
             if (try rule(l)) |v| {
                 return v;
@@ -52,7 +55,7 @@ pub const Lexer = struct {
     }
 
     /// Peek at the next token.
-    pub fn peekNext(l: *Lexer) !?token.Token {
+    pub fn peekNext(l: *Lexer) !?Token {
         var indexBefore = l.bufIndex;
         var tokenIndexBefore = l.tokenIndex;
         var pNext = try l.next();
@@ -69,7 +72,7 @@ pub const Lexer = struct {
         return l.buffer[bufIndex];
     }
 
-    pub fn emit(l: *Lexer, tok: token.TokenId, startOffset: u32, endOffset: u32) !?token.Token {
+    pub fn emit(l: *Lexer, tok: TokenId, startOffset: u32, endOffset: u32) !?Token {
         // log.Debugf("start: {} end: {}\n", .{ start, end });
         var str = l.buffer[startOffset..endOffset];
         var nEndOffset: u32 = endOffset - 1;
@@ -77,11 +80,11 @@ pub const Lexer = struct {
             nEndOffset = startOffset;
         }
         var column: u32 = l.offsetToColumn(startOffset);
-        if (tok == token.TokenId.EOF) {
+        if (tok == TokenId.EOF) {
             column = l.tokens.items[l.tokens.items.len - 1].column;
             l.lineNumber -= 1;
         }
-        var newTok = token.Token{
+        var newTok = Token{
             .ID = tok,
             .startOffset = startOffset,
             .endOffset = nEndOffset,
@@ -176,7 +179,7 @@ pub const Lexer = struct {
     }
 
     /// Get the last token emitted, exclude peek tokens
-    pub fn lastToken(l: *Lexer) token.Token {
+    pub fn lastToken(l: *Lexer) Token {
         return l.tokens.items[l.tokenIndex];
     }
 
@@ -187,7 +190,7 @@ pub const Lexer = struct {
 };
 
 /// Get all the whitespace characters greedly.
-pub fn ruleWhitespace(t: *Lexer) !?token.Token {
+pub fn ruleWhitespace(t: *Lexer) !?Token {
     var index: u32 = t.bufIndex;
     while (t.getChar(index)) |val| {
         if (t.isWhitespace(val)) {
@@ -204,11 +207,22 @@ pub fn ruleWhitespace(t: *Lexer) !?token.Token {
 }
 
 /// Return EOF at the end of the input
-pub fn ruleEOF(t: *Lexer) !?token.Token {
+pub fn ruleEOF(t: *Lexer) !?Token {
     if (t.bufIndex == t.buffer.len) {
         return t.emit(.EOF, t.bufIndex, t.bufIndex);
     }
     return null;
+}
+
+pub fn checkToken(val: Token, expect: Token) void {
+    log.Debugf("expect: {}\n", .{expect});
+    log.Debugf("got: {}\n", .{val});
+    assert(val.ID == expect.ID);
+    assert(val.startOffset == expect.startOffset);
+    assert(val.endOffset == expect.endOffset);
+    assert(val.column == expect.column);
+    assert(val.lineNumber == expect.lineNumber);
+    assert(mem.eql(u8, val.string, expect.string));
 }
 
 test "lexer: peekNext " {
@@ -217,25 +231,56 @@ test "lexer: peekNext " {
     const allocator = &arena.allocator;
 
     const input = "# foo";
-    log.Debugf("input:\n{}\n-- END OF TEST --\n", .{input});
+    log.Debugf("input:\n{}-- END OF TEST --\n", .{input});
 
     var t = try Lexer.init(allocator, input);
 
     if (try t.next()) |tok| {
-        assert(tok.ID == token.TokenId.AtxHeader);
+        assert(tok.ID == TokenId.AtxHeader);
     }
 
     // two consecutive peeks should return the same token
     if (try t.peekNext()) |tok| {
-        assert(tok.ID == token.TokenId.Whitespace);
+        assert(tok.ID == TokenId.Whitespace);
     }
     if (try t.peekNext()) |tok| {
-        assert(tok.ID == token.TokenId.Whitespace);
+        assert(tok.ID == TokenId.Whitespace);
     }
     // The last token does not include peek'd tokens
-    assert(t.lastToken().ID == token.TokenId.AtxHeader);
+    assert(t.lastToken().ID == TokenId.AtxHeader);
 
     if (try t.next()) |tok| {
-        assert(tok.ID == token.TokenId.Whitespace);
+        assert(tok.ID == TokenId.Whitespace);
     }
+}
+
+test "test example 1" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = &arena.allocator;
+    const out = try testUtil.getTest(allocator, 1, testUtil.TestKey.markdown);
+
+    // log.config(log.logger.Level.Debug, true);
+    log.Debugf("test:\n{}-- END OF TEST --\n", .{out});
+
+    var t = try Lexer.init(allocator, out);
+
+    while (true) {
+        if (try t.next()) |tok| {
+            if (tok.ID == TokenId.EOF) {
+                log.Debug("Found EOF");
+                break;
+            }
+        }
+    }
+
+    // "markdown": "\tfoo\tbaz\t\tbim\n",
+    checkToken(t.tokens.items[0], Token{ .ID = TokenId.Whitespace, .startOffset = 0, .endOffset = 0, .string = "\t", .lineNumber = 1, .column = 1 });
+    checkToken(t.tokens.items[1], Token{ .ID = TokenId.Text, .startOffset = 1, .endOffset = 3, .string = "foo", .lineNumber = 1, .column = 2 });
+    checkToken(t.tokens.items[2], Token{ .ID = TokenId.Whitespace, .startOffset = 4, .endOffset = 4, .string = "\t", .lineNumber = 1, .column = 5 });
+    checkToken(t.tokens.items[3], Token{ .ID = TokenId.Text, .startOffset = 5, .endOffset = 7, .string = "baz", .lineNumber = 1, .column = 6 });
+    checkToken(t.tokens.items[4], Token{ .ID = TokenId.Whitespace, .startOffset = 8, .endOffset = 9, .string = "\t\t", .lineNumber = 1, .column = 9 });
+    checkToken(t.tokens.items[5], Token{ .ID = TokenId.Text, .startOffset = 10, .endOffset = 12, .string = "bim", .lineNumber = 1, .column = 11 });
+    checkToken(t.tokens.items[6], Token{ .ID = TokenId.Whitespace, .startOffset = 13, .endOffset = 13, .string = "\n", .lineNumber = 1, .column = 14 });
+    checkToken(t.tokens.items[7], Token{ .ID = TokenId.EOF, .startOffset = 14, .endOffset = 14, .string = "", .lineNumber = 1, .column = 14 });
 }
