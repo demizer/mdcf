@@ -67,16 +67,18 @@ pub fn stateCodeBlock(p: *Parser) !void {
 }
 
 test "Parser Test 1" {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = &arena.allocator;
+    var test_fixed_buffer_allocator_memory: [800000 * @sizeOf(u64)]u8 = undefined;
+    var fixed_buffer_allocator = std.heap.ThreadSafeFixedBufferAllocator.init(test_fixed_buffer_allocator_memory[0..]);
+    var leak_allocator = std.testing.LeakCountAllocator.init(&fixed_buffer_allocator.allocator);
+    var allocator = &leak_allocator.allocator;
+
     const input = try testUtil.getTest(allocator, 1, testUtil.TestKey.markdown);
 
     // log.config(log.logger.Level.Debug, true);
     std.debug.warn("{}", .{"\n"});
     log.Debugf("test:\n{}-- END OF TEST --\n", .{input});
 
-    var p = Parser.init(std.testing.allocator);
+    var p = Parser.init(allocator);
     defer p.deinit();
 
     // Used https://codebeautify.org/xmltojson to convert ast from spec to json
