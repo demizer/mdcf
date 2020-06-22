@@ -114,7 +114,7 @@ pub fn testJsonExpect(expected: []const u8, value: var, dumpJson: bool) !void {
 /// - dumpHtml: If true, only the json value of "value" will be dumped to stdout.
 pub fn testHtmlExpect(allocator: *std.mem.Allocator, expected: []const u8, value: *std.ArrayList(Node), dumpHtml: bool) !void {
     if (dumpHtml) {
-        log.Debugf("expect: {}\ngot: ", .{expected});
+        log.Debugf("expect: {}got: ", .{expected});
     }
     var vos = ValidationOutStream.init(expected, dumpHtml);
 

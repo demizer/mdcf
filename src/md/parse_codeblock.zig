@@ -11,11 +11,26 @@ const TokenId = @import("token.zig").TokenId;
 pub fn stateCodeBlock(p: *Parser) !void {
     if (try p.lex.peekNext()) |tok| {
         var openTok = p.lex.lastToken();
-        if (openTok.ID == TokenId.Whitespace and mem.eql(u8, openTok.string, "\t") and tok.ID == TokenId.Text) {
+        // log.Debugf("parse block code before openTok: '{}' id: {} len: {}, tok: '{}' id: {} len: {}\n", .{
+        //     openTok.string, openTok.ID, openTok.string.len,
+        //     tok.string,     tok.ID,     tok.string.len,
+        // });
+        var hazCodeBlockWhitespace: bool = false;
+        if (openTok.ID == TokenId.Whitespace and openTok.string.len > 1) {
+            // Check the whitespace for tabs
+            for (openTok.string) |val| {
+                if (val == '\t' or openTok.string.len >= 4) {
+                    hazCodeBlockWhitespace = true;
+                    break;
+                }
+            }
+        }
+        if (hazCodeBlockWhitespace and tok.ID == TokenId.Text) {
+            // log.Debugf("parse block code inside openTok: '{}', tok: '{}'\n", .{ openTok.string, tok.string });
             p.state = Parser.State.CodeBlock;
             var newChild = Node{
                 .ID = Node.ID.CodeBlock,
-                .Value = "\t",
+                .Value = openTok.string,
                 .PositionStart = Node.Position{
                     .Line = openTok.lineNumber,
                     .Column = openTok.column,
@@ -74,7 +89,6 @@ test "Parser Test 1" {
 
     const input = try testUtil.getTest(allocator, 1, testUtil.TestKey.markdown);
 
-    // log.config(log.logger.Level.Debug, true);
     std.debug.warn("{}", .{"\n"});
     log.Debugf("test:\n{}-- END OF TEST --\n", .{input});
 
@@ -84,6 +98,33 @@ test "Parser Test 1" {
     // Used https://codebeautify.org/xmltojson to convert ast from spec to json
     const expectJson = @embedFile("../../test/expect/test1.json");
     const expectHtml = try testUtil.getTest(allocator, 1, testUtil.TestKey.html);
+
+    var out = p.parse(input);
+
+    // FIXME: Would be much easier to debug if we used real json diff...
+    //        Run jsondiff in a container: https://github.com/zgrossbart/jdd or... use a zig json diff library.
+    try testUtil.testJsonExpect(expectJson, p.root.items, false);
+    try testUtil.testHtmlExpect(allocator, expectHtml, &p.root, false);
+}
+
+test "Parser Test 2" {
+    var test_fixed_buffer_allocator_memory: [800000 * @sizeOf(u64)]u8 = undefined;
+    var fixed_buffer_allocator = std.heap.ThreadSafeFixedBufferAllocator.init(test_fixed_buffer_allocator_memory[0..]);
+    var leak_allocator = std.testing.LeakCountAllocator.init(&fixed_buffer_allocator.allocator);
+    var allocator = &leak_allocator.allocator;
+
+    const input = try testUtil.getTest(allocator, 2, testUtil.TestKey.markdown);
+
+    log.config(log.logger.Level.Debug, true);
+    std.debug.warn("{}", .{"\n"});
+    log.Debugf("test:\n{}-- END OF TEST --\n", .{input});
+
+    var p = Parser.init(allocator);
+    defer p.deinit();
+
+    // Used https://codebeautify.org/xmltojson to convert ast from spec to json
+    const expectJson = @embedFile("../../test/expect/test2.json");
+    const expectHtml = try testUtil.getTest(allocator, 2, testUtil.TestKey.html);
 
     var out = p.parse(input);
 
