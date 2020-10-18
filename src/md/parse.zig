@@ -1,9 +1,7 @@
 const std = @import("std");
 const mem = std.mem;
 const json = std.json;
-const testUtil = @import("test_util.zig");
 const Lexer = @import("lexer.zig").Lexer;
-const TokenId = @import("token.zig").TokenId;
 const log = @import("log.zig");
 
 usingnamespace @import("parse_atx_heading.zig");
@@ -258,24 +256,3 @@ pub const Parser = struct {
         }
     }
 };
-
-test "Parser Test 32" {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = &arena.allocator;
-    const input = try testUtil.getTest(allocator, 32, testUtil.TestKey.markdown);
-
-    log.Debugf("test:\n{}\n-- END OF TEST --\n", .{input});
-
-    var p = Parser.init(std.testing.allocator);
-    defer p.deinit();
-
-    // Used https://codebeautify.org/xmltojson to convert ast from spec to json
-    const expect = @embedFile("../../test/expect/test32.json");
-
-    var out = p.parse(input);
-
-    // FIXME: Would be much easier to debug if we used real json diff...
-    //        Run jsondiff in a container: https://github.com/zgrossbart/jdd or... use a zig json diff library.
-    try testUtil.testJsonExpect(expect, p.root.items, false);
-}

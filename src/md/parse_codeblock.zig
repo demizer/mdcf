@@ -1,7 +1,6 @@
 const std = @import("std");
 const mem = std.mem;
 const log = @import("log.zig");
-const testUtil = @import("test_util.zig");
 const State = @import("ast.zig").State;
 const Parser = @import("parse.zig").Parser;
 const Node = @import("parse.zig").Node;
@@ -79,57 +78,4 @@ pub fn stateCodeBlock(p: *Parser) !void {
             p.state = Parser.State.Start;
         }
     }
-}
-
-test "Parser Test 1" {
-    var test_fixed_buffer_allocator_memory: [800000 * @sizeOf(u64)]u8 = undefined;
-    var fixed_buffer_allocator = std.heap.ThreadSafeFixedBufferAllocator.init(test_fixed_buffer_allocator_memory[0..]);
-    var leak_allocator = std.testing.LeakCountAllocator.init(&fixed_buffer_allocator.allocator);
-    var allocator = &leak_allocator.allocator;
-
-    const input = try testUtil.getTest(allocator, 1, testUtil.TestKey.markdown);
-
-    std.debug.warn("{}", .{"\n"});
-    log.Debugf("test:\n{}-- END OF TEST --\n", .{input});
-
-    var p = Parser.init(allocator);
-    defer p.deinit();
-
-    // Used https://codebeautify.org/xmltojson to convert ast from spec to json
-    const expectJson = @embedFile("../../test/expect/test1.json");
-    const expectHtml = try testUtil.getTest(allocator, 1, testUtil.TestKey.html);
-
-    var out = p.parse(input);
-
-    // FIXME: Would be much easier to debug if we used real json diff...
-    //        Run jsondiff in a container: https://github.com/zgrossbart/jdd or... use a zig json diff library.
-    try testUtil.testJsonExpect(expectJson, p.root.items, false);
-    try testUtil.testHtmlExpect(allocator, expectHtml, &p.root, false);
-}
-
-test "Parser Test 2" {
-    var test_fixed_buffer_allocator_memory: [800000 * @sizeOf(u64)]u8 = undefined;
-    var fixed_buffer_allocator = std.heap.ThreadSafeFixedBufferAllocator.init(test_fixed_buffer_allocator_memory[0..]);
-    var leak_allocator = std.testing.LeakCountAllocator.init(&fixed_buffer_allocator.allocator);
-    var allocator = &leak_allocator.allocator;
-
-    const input = try testUtil.getTest(allocator, 2, testUtil.TestKey.markdown);
-
-    log.config(log.logger.Level.Debug, true);
-    std.debug.warn("{}", .{"\n"});
-    log.Debugf("test:\n{}-- END OF TEST --\n", .{input});
-
-    var p = Parser.init(allocator);
-    defer p.deinit();
-
-    // Used https://codebeautify.org/xmltojson to convert ast from spec to json
-    const expectJson = @embedFile("../../test/expect/test2.json");
-    const expectHtml = try testUtil.getTest(allocator, 2, testUtil.TestKey.html);
-
-    var out = p.parse(input);
-
-    // FIXME: Would be much easier to debug if we used real json diff...
-    //        Run jsondiff in a container: https://github.com/zgrossbart/jdd or... use a zig json diff library.
-    try testUtil.testJsonExpect(expectJson, p.root.items, false);
-    try testUtil.testHtmlExpect(allocator, expectHtml, &p.root, false);
 }

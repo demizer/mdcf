@@ -253,34 +253,3 @@ test "lexer: peekNext " {
         assert(tok.ID == TokenId.Whitespace);
     }
 }
-
-test "test example 1" {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = &arena.allocator;
-    const out = try testUtil.getTest(allocator, 1, testUtil.TestKey.markdown);
-
-    // log.config(log.logger.Level.Debug, true);
-    log.Debugf("test:\n{}-- END OF TEST --\n", .{out});
-
-    var t = try Lexer.init(allocator, out);
-
-    while (true) {
-        if (try t.next()) |tok| {
-            if (tok.ID == TokenId.EOF) {
-                log.Debug("Found EOF");
-                break;
-            }
-        }
-    }
-
-    // "markdown": "\tfoo\tbaz\t\tbim\n",
-    checkToken(t.tokens.items[0], Token{ .ID = TokenId.Whitespace, .startOffset = 0, .endOffset = 0, .string = "\t", .lineNumber = 1, .column = 1 });
-    checkToken(t.tokens.items[1], Token{ .ID = TokenId.Text, .startOffset = 1, .endOffset = 3, .string = "foo", .lineNumber = 1, .column = 2 });
-    checkToken(t.tokens.items[2], Token{ .ID = TokenId.Whitespace, .startOffset = 4, .endOffset = 4, .string = "\t", .lineNumber = 1, .column = 5 });
-    checkToken(t.tokens.items[3], Token{ .ID = TokenId.Text, .startOffset = 5, .endOffset = 7, .string = "baz", .lineNumber = 1, .column = 6 });
-    checkToken(t.tokens.items[4], Token{ .ID = TokenId.Whitespace, .startOffset = 8, .endOffset = 9, .string = "\t\t", .lineNumber = 1, .column = 9 });
-    checkToken(t.tokens.items[5], Token{ .ID = TokenId.Text, .startOffset = 10, .endOffset = 12, .string = "bim", .lineNumber = 1, .column = 11 });
-    checkToken(t.tokens.items[6], Token{ .ID = TokenId.Whitespace, .startOffset = 13, .endOffset = 13, .string = "\n", .lineNumber = 1, .column = 14 });
-    checkToken(t.tokens.items[7], Token{ .ID = TokenId.EOF, .startOffset = 14, .endOffset = 14, .string = "", .lineNumber = 1, .column = 14 });
-}
