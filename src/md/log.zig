@@ -26,7 +26,7 @@ pub fn Debug(comptime str: []const u8) void {
     log.Debug(str);
 }
 
-pub fn Debugf(comptime fmt: []const u8, args: var) void {
+pub fn Debugf(comptime fmt: []const u8, args: anytype) void {
     log.Debugf(fmt, args);
 }
 
@@ -34,7 +34,7 @@ pub fn Info(comptime str: []const u8) void {
     log.Info(str);
 }
 
-pub fn Infof(comptime fmt: []const u8, args: var) void {
+pub fn Infof(comptime fmt: []const u8, args: anytype) void {
     log.Infof(fmt, args);
 }
 
@@ -42,6 +42,6 @@ pub fn Error(comptime str: []const u8) void {
     log.Error(str);
 }
 
-pub fn Errorf(comptime fmt: []const u8, args: var) void {
+pub fn Errorf(comptime fmt: []const u8, args: anytype) void {
     log.Errorf(fmt, args);
 }

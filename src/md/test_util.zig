@@ -14,17 +14,23 @@ pub const TestKey = enum {
     html,
 };
 
+/// Caller owns returned memory
 pub fn getTest(allocator: *mem.Allocator, number: i32, key: TestKey) ![]const u8 {
     const cwd = fs.cwd();
     const source = try cwd.readFileAlloc(allocator, "test/commonmark_spec_0.29.json", math.maxInt(usize));
+    defer allocator.free(source);
     var json_parser = std.json.Parser.init(allocator, true);
     defer json_parser.deinit();
     var json_tree = try json_parser.parse(source);
+    defer json_tree.deinit();
     const stdout = &std.io.getStdOut().outStream();
     for (json_tree.root.Array.items) |value, i| {
-        var example_num = value.Object.get("example").?.value;
-        if (example_num.Integer == number) {
-            return value.Object.get(@tagName(key)).?.value.String;
+        var example_num = value.Object.get("example").?.Integer;
+        if (example_num == number) {
+            var buf = std.ArrayList(u8).init(allocator);
+            defer buf.deinit();
+            _ = try buf.outStream().write(value.Object.get(@tagName(key)).?.String);
+            return buf.toOwnedSlice();
         }
     }
     return TestError.TestNotFound;
@@ -89,7 +95,7 @@ const ValidationOutStream = struct {
 /// - expected: The expected json output. Use @embedFile()!
 /// - value: The parser root to test.
 /// - dumpJson: If true, only the json value of "value" will be dumped to stdout.
-pub fn testJsonExpect(expected: []const u8, value: var, dumpJson: bool) !void {
+pub fn testJsonExpect(expected: []const u8, value: anytype, dumpJson: bool) !void {
     if (dumpJson) {
         log.Debug("dumped_json: ");
     }

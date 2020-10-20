@@ -2,7 +2,7 @@ const std = @import("std");
 const parser = @import("parse.zig");
 const Node = @import("parse.zig").Node;
 
-pub fn markdownToHtml(nodeList: *std.ArrayList(Node), outStream: var) !void {
+pub fn markdownToHtml(nodeList: *std.ArrayList(Node), outStream: anytype) !void {
     for (nodeList.items) |item| {
         try parser.Node.htmlStringify(
             item,

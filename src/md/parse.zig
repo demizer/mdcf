@@ -34,7 +34,7 @@ pub const Node = struct {
         pub fn jsonStringify(
             value: ID,
             options: json.StringifyOptions,
-            out_stream: var,
+            out_stream: anytype,
         ) !void {
             try json.stringify(@tagName(value), options, out_stream);
         }
@@ -56,7 +56,7 @@ pub const Node = struct {
 
             pub fn outputIndent(
                 whitespace: @This(),
-                out_stream: var,
+                out_stream: anytype,
             ) @TypeOf(out_stream).Error!void {
                 var char: u8 = undefined;
                 var n_chars: usize = undefined;
@@ -103,7 +103,7 @@ pub const Node = struct {
     pub fn jsonStringify(
         value: @This(),
         options: json.StringifyOptions,
-        out_stream: var,
+        out_stream: anytype,
     ) !void {
         try out_stream.writeByte('{');
         const T = @TypeOf(value);
@@ -160,7 +160,7 @@ pub const Node = struct {
     pub fn htmlStringify(
         value: @This(),
         options: StringifyOptions,
-        out_stream: var,
+        out_stream: anytype,
     ) !void {
         var child_options = options;
         switch (value.ID) {
@@ -216,15 +216,14 @@ pub const Parser = struct {
 
     pub fn deinit(self: *Parser) void {
         for (self.root.items) |item| {
-            // log.Debugf("{}\n", .{@typeInfo(@TypeOf(item.Value))});
-            // if (item.Value) |val| {
-            //     self.allocator.free(val);
-            // }
             for (item.Children.items) |subchild| {
-                if (subchild.Value) |val| {
-                    self.allocator.free(val);
+                if (subchild.Value) |val2| {
+                    self.allocator.free(val2);
                 }
                 subchild.deinit();
+            }
+            if (item.Value) |val| {
+                self.allocator.free(val);
             }
             item.deinit();
         }
@@ -234,7 +233,6 @@ pub const Parser = struct {
 
     pub fn parse(self: *Parser, input: []const u8) !void {
         self.lex = try Lexer.init(self.allocator, input);
-        // log.Debugf("input:\n{}-- END OF TEST --\n", .{input});
         while (true) {
             if (try self.lex.next()) |tok| {
                 switch (tok.ID) {

@@ -6,10 +6,11 @@ const Parser = @import("parse.zig").Parser;
 const Token = @import("token.zig").Token;
 
 fn testAllocator() *mem.Allocator {
-    var test_fixed_buffer_allocator_memory: [800000 * @sizeOf(u64)]u8 = undefined;
-    var fixed_buffer_allocator = std.heap.ThreadSafeFixedBufferAllocator.init(test_fixed_buffer_allocator_memory[0..]);
-    var leak_allocator = std.testing.LeakCountAllocator.init(&fixed_buffer_allocator.allocator);
-    return &leak_allocator.allocator;
+    // var test_fixed_buffer_allocator_memory: [800000 * @sizeOf(u64)]u8 = undefined;
+    // var fixed_buffer_allocator = std.heap.ThreadSafeFixedBufferAllocator.init(test_fixed_buffer_allocator_memory[0..]);
+    // var leak_allocator = std.testing.allocator(&fixed_buffer_allocator.allocator);
+    // return &leak_allocator.allocator;
+    return std.testing.allocator;
 }
 
 fn testDumpTest(input: []const u8) void {
@@ -59,7 +60,7 @@ test "Parser Test 2" {
 }
 
 test "Parser Test 3" {
-    var allocator = testAllocator();
+    var allocator = std.testing.allocator;
     const testNumber: u8 = 3;
     const input = try testUtil.getTest(allocator, testNumber, testUtil.TestKey.markdown);
     testDumpTest(input);
