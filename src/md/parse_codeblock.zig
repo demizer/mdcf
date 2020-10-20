@@ -15,7 +15,7 @@ pub fn stateCodeBlock(p: *Parser) !void {
         //     tok.string,     tok.ID,     tok.string.len,
         // });
         var hazCodeBlockWhitespace: bool = false;
-        if (openTok.ID == TokenId.Whitespace and openTok.string.len > 1) {
+        if (openTok.ID == TokenId.Whitespace and openTok.string.len >= 1) {
             // Check the whitespace for tabs
             for (openTok.string) |val| {
                 if (val == '\t' or openTok.string.len >= 4) {
@@ -25,7 +25,7 @@ pub fn stateCodeBlock(p: *Parser) !void {
             }
         }
         if (hazCodeBlockWhitespace and tok.ID == TokenId.Text) {
-            // log.Debugf("parse block code inside openTok: '{}', tok: '{}'\n", .{ openTok.string, tok.string });
+            // log.Debugf("parse block code inside openTok: '{x}', tok: '{}'\n", .{ openTok.string, tok.string });
             p.state = Parser.State.CodeBlock;
             var newChild = Node{
                 .ID = Node.ID.CodeBlock,

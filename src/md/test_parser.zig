@@ -27,12 +27,12 @@ test "Parser Test 1" {
 
     var p = Parser.init(allocator);
     defer p.deinit();
+    _ = try p.parse(input);
 
     // Used https://codebeautify.org/xmltojson to convert ast from spec to json
     const expectJson = @embedFile("../../test/expect/test1.json");
     const expectHtml = try testUtil.getTest(allocator, 1, testUtil.TestKey.html);
-
-    var out = p.parse(input);
+    defer allocator.free(expectHtml);
 
     // FIXME: use jsondiff.com to dump better failure output
     try testUtil.testJsonExpect(expectJson, p.root.items, false);
@@ -47,12 +47,12 @@ test "Parser Test 2" {
 
     var p = Parser.init(allocator);
     defer p.deinit();
+    _ = try p.parse(input);
 
     // Used https://codebeautify.org/xmltojson to convert ast from spec to json
     const expectJson = @embedFile("../../test/expect/test2.json");
     const expectHtml = try testUtil.getTest(allocator, testNumber, testUtil.TestKey.html);
-
-    var out = p.parse(input);
+    defer allocator.free(expectHtml);
 
     // FIXME: use jsondiff.com to dump better failure output
     try testUtil.testJsonExpect(expectJson, p.root.items, false);
@@ -67,12 +67,12 @@ test "Parser Test 3" {
 
     var p = Parser.init(allocator);
     defer p.deinit();
+    var out = p.parse(input);
 
     // Used https://codebeautify.org/xmltojson to convert ast from spec to json
     const expectJson = @embedFile("../../test/expect/test3.json");
     const expectHtml = try testUtil.getTest(allocator, testNumber, testUtil.TestKey.html);
-
-    var out = p.parse(input);
+    defer allocator.free(expectHtml);
 
     // FIXME: use jsondiff.com to dump better failure output
     try testUtil.testJsonExpect(expectJson, p.root.items, true);
