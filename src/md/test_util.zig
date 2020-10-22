@@ -27,10 +27,7 @@ pub fn getTest(allocator: *mem.Allocator, number: i32, key: TestKey) ![]const u8
     for (json_tree.root.Array.items) |value, i| {
         var example_num = value.Object.get("example").?.Integer;
         if (example_num == number) {
-            var buf = std.ArrayList(u8).init(allocator);
-            defer buf.deinit();
-            _ = try buf.outStream().write(value.Object.get(@tagName(key)).?.String);
-            return buf.toOwnedSlice();
+            return try allocator.dupe(u8, value.Object.get(@tagName(key)).?.String);
         }
     }
     return TestError.TestNotFound;
