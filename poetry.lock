@@ -1,0 +1,17 @@
+[[package]]
+name = "json-diff"
+version = "1.5.0"
+description = "Generates diff between two JSON files"
+category = "main"
+optional = false
+python-versions = "*"
+
+[metadata]
+lock-version = "1.1"
+python-versions = "^3.9"
+content-hash = "f386f4063ac45185264207bde9ea62614ab196b311d55cacc9e42e556742f194"
+
+[metadata.files]
+json-diff = [
+    {file = "json_diff-1.5.0.tar.gz", hash = "sha256:abf4a60c0c716d6ba6dd3cb626b01b417e150e4436e39f6675ef8501117bf5d8"},
+]
