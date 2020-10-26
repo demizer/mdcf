@@ -24,8 +24,6 @@
 
 # Things To Do
 
-## Sun Oct 25 22:08 2020: remove python dependencies since json_diff is not what I want
-
 ## Sun Oct 25 22:09 2020: document "json-diff" test dependency and run in docker
 
    https://github.com/andreyvit/json-diff
