@@ -22,10 +22,28 @@
 * [astexplorer.net](https://astexplorer.net/)
   Examine an AST of a javascript markdown parser
 
-
 # Things To Do
 
-## Mon Jun 01 15:54 2020: Add zig-md2020 to awesome-zig
+## Sun Oct 25 22:08 2020: remove python dependencies since json_diff is not what I want
+
+## Sun Oct 25 22:09 2020: document "json-diff" test dependency and run in docker
+
+   https://github.com/andreyvit/json-diff
+
+   docker run -ti \
+           --rm \
+           -v $PWD:$PWD \
+           -w $PWD \
+           bwowk/json-diff \
+           file-a.json file-b.json
+
+## Sun Oct 25 22:10 2020: Add diff support to html output
+
+   Might need to beautify it first so it makes a good diff
+
+## Sun Oct 25 22:11 2020: rename project to markzig
+
+## Mon Jun 01 15:54 2020: Add markzig to awesome-zig
 
 ## Sat Jun 06 13:39 2020: Remove the json / html comparitor
 

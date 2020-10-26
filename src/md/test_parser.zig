@@ -19,7 +19,7 @@ fn testDumpTest(input: []const u8) void {
     log.Debugf("test:\n{}-- END OF TEST --\n", .{input});
 }
 
-test "Parser Test 1" {
+test "Parser Test 001" {
     var allocator = testAllocator();
     const testNumber: u8 = 1;
     const input = try testUtil.getTest(allocator, 1, testUtil.TestKey.markdown);
@@ -30,7 +30,7 @@ test "Parser Test 1" {
     _ = try p.parse(input);
 
     // Used https://codebeautify.org/xmltojson to convert ast from spec to json
-    const expectJson = @embedFile("../../test/expect/test1.json");
+    const expectJson = @embedFile("../../test/expect/test_001.json");
     const expectHtml = try testUtil.getTest(allocator, 1, testUtil.TestKey.html);
     defer allocator.free(expectHtml);
 
@@ -39,7 +39,7 @@ test "Parser Test 1" {
     try testUtil.testHtmlExpect(allocator, expectHtml, &p.root, false);
 }
 
-test "Parser Test 2" {
+test "Parser Test 002" {
     var allocator = testAllocator();
     const testNumber: u8 = 2;
     const input = try testUtil.getTest(allocator, testNumber, testUtil.TestKey.markdown);
@@ -50,7 +50,7 @@ test "Parser Test 2" {
     _ = try p.parse(input);
 
     // Used https://codebeautify.org/xmltojson to convert ast from spec to json
-    const expectJson = @embedFile("../../test/expect/test2.json");
+    const expectJson = @embedFile("../../test/expect/test_002.json");
     const expectHtml = try testUtil.getTest(allocator, testNumber, testUtil.TestKey.html);
     defer allocator.free(expectHtml);
 
@@ -59,7 +59,7 @@ test "Parser Test 2" {
     try testUtil.testHtmlExpect(allocator, expectHtml, &p.root, false);
 }
 
-test "Parser Test 3" {
+test "Parser Test 003" {
     var allocator = std.testing.allocator;
     const testNumber: u8 = 3;
     const input = try testUtil.getTest(allocator, testNumber, testUtil.TestKey.markdown);
@@ -70,16 +70,16 @@ test "Parser Test 3" {
     var out = p.parse(input);
 
     // Used https://codebeautify.org/xmltojson to convert ast from spec to json
-    const expectJson = @embedFile("../../test/expect/test3.json");
+    const expectJson = @embedFile("../../test/expect/test_003.json");
     const expectHtml = try testUtil.getTest(allocator, testNumber, testUtil.TestKey.html);
     defer allocator.free(expectHtml);
 
     // FIXME: use jsondiff.com to dump better failure output
-    try testUtil.testJsonExpect(expectJson, p.root.items, true);
+    try testUtil.testJsonExpect(allocator, expectJson, p.root.items, true);
     // try testUtil.testHtmlExpect(allocator, expectHtml, &p.root, false);
 }
 
-test "Parser Test 32" {
+test "Parser Test 032" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = &arena.allocator;
@@ -91,16 +91,16 @@ test "Parser Test 32" {
     defer p.deinit();
 
     // Used https://codebeautify.org/xmltojson to convert ast from spec to json
-    const expect = @embedFile("../../test/expect/test32.json");
+    const expect = @embedFile("../../test/expect/test_032.json");
 
     var out = p.parse(input);
 
     // FIXME: Would be much easier to debug if we used real json diff...
     //        Run jsondiff in a container: https://github.com/zgrossbart/jdd or... use a zig json diff library.
-    try testUtil.testJsonExpect(expect, p.root.items, false);
+    testUtil.testJsonExpect(expect, p.root.items, false) catch |err| log.Debug("error yo");
 }
 
-test "Test Convert HTML 32" {
+test "Test Convert HTML 032" {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = &arena.allocator;

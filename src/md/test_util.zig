@@ -1,13 +1,18 @@
 const std = @import("std");
 const fs = std.fs;
+const fmt = std.fmt;
 const mem = std.mem;
 const math = std.math;
 const json = std.json;
 const log = @import("log.zig");
 const translate = @import("translate.zig");
 const Node = @import("parse.zig").Node;
+const ChildProcess = std.ChildProcess;
 
-const TestError = error{TestNotFound};
+const TestError = error{
+    TestNotFound,
+    CouldNotCreateTempDirectory,
+};
 
 pub const TestKey = enum {
     markdown,
@@ -33,82 +38,70 @@ pub fn getTest(allocator: *mem.Allocator, number: i32, key: TestKey) ![]const u8
     return TestError.TestNotFound;
 }
 
-const ValidationOutStream = struct {
-    const Self = @This();
-    pub const OutStream = std.io.OutStream(*Self, Error, write);
-    pub const Error = error{
-        TooMuchData,
-        DifferentData,
-    };
+pub fn mktmp(allocator: *mem.Allocator) ![]const u8 {
+    const cwd = try fs.path.resolve(allocator, &[_][]const u8{"."});
+    defer allocator.free(cwd);
+    var out = try exec(allocator, cwd, true, &[_][]const u8{ "mktemp", "-d" });
+    defer allocator.free(out.stdout);
+    defer allocator.free(out.stderr);
+    // defer allocator.free(out);
+    log.Debugf("mktemp return: {}\n", .{out});
+    return allocator.dupe(u8, fmt.trim(out.stdout));
+}
 
-    expected_remaining: []const u8,
-    dump: bool,
-
-    fn init(exp: []const u8, dumpJsonInner: bool) Self {
-        return .{ .expected_remaining = exp, .dump = dumpJsonInner };
-    }
-
-    pub fn outStream(self: *Self) OutStream {
-        return .{ .context = self };
-    }
-
-    fn write(self: *Self, bytes: []const u8) Error!usize {
-        if (self.dump) {
-            std.debug.warn("{}", .{bytes});
-        } else {
-            if (self.expected_remaining.len < bytes.len) {
-                std.debug.warn(
-                    \\====== expected this output: =========
-                    \\{}
-                    \\======== instead found this: =========
-                    \\{}
-                    \\======================================
-                , .{
-                    self.expected_remaining,
-                    bytes,
-                });
-                return error.TooMuchData;
-            }
-            if (!mem.eql(u8, self.expected_remaining[0..bytes.len], bytes)) {
-                std.debug.warn(
-                    \\====== expected this output: =========
-                    \\{}
-                    \\======== instead found this: =========
-                    \\{}
-                    \\======================================
-                , .{
-                    self.expected_remaining[0..bytes.len],
-                    bytes,
-                });
-                return error.DifferentData;
-            }
-            self.expected_remaining = self.expected_remaining[bytes.len..];
-        }
-        return bytes.len;
-    }
-};
+pub fn writeFile(absolute_path: []u8, contents: []const u8) !void {
+    log.Debugf("file path: {}\n", .{absolute_path});
+    const file = try std.fs.createFileAbsolute(
+        absolute_path,
+        .{},
+    );
+    defer file.close();
+    try file.writeAll(contents);
+}
 
 /// testJsonExpect tests parser output against a json test file containing the expected output
 /// - expected: The expected json output. Use @embedFile()!
 /// - value: The parser root to test.
 /// - dumpJson: If true, only the json value of "value" will be dumped to stdout.
-pub fn testJsonExpect(expected: []const u8, value: anytype, dumpJson: bool) !void {
+pub fn testJsonExpect(allocator: *mem.Allocator, expected: []const u8, value: anytype, dumpJson: bool) !void {
     if (dumpJson) {
         log.Debug("dumped_json: ");
     }
-    var vos = ValidationOutStream.init(expected, dumpJson);
+
+    var temp_dir = try mktmp(allocator);
+    defer allocator.free(temp_dir);
+
+    log.Debugf("temp directory: {}\n", .{temp_dir});
+
+    // const cwdPath = try fs.path.resolve(allocator, &[_][]const u8{"."});
+    // writeFile(temp_dir, "out.json", value);
+    var file = try fs.path.join(allocator, &[_][]const u8{ temp_dir, "expect.json" });
+    defer allocator.free(file);
+    try writeFile(file, expected);
+
+    var buf = std.ArrayList(u8).init(allocator);
+    defer buf.deinit();
+
     try json.stringify(value, json.StringifyOptions{
         .whitespace = .{
             .indent = .{ .Space = 4 },
             .separator = true,
         },
-    }, vos.outStream());
-    _ = try vos.outStream().write("\n");
-    if (!dumpJson) {
-        if (vos.expected_remaining.len > 0) return error.NotEnoughData;
-    } else {
-        return error.DumpJsonEnabled;
-    }
+    }, buf.outStream());
+    var file2 = try fs.path.join(allocator, &[_][]const u8{ temp_dir, "actual.json" });
+    defer allocator.free(file2);
+    try writeFile(file2, buf.items);
+
+    const cwd = try fs.path.resolve(allocator, &[_][]const u8{"."});
+    defer allocator.free(cwd);
+    var diff = try exec(allocator, cwd, true, &[_][]const u8{ "json-diff", "-C", file2, file });
+    log.Debugf("{}\n", .{diff});
+
+    // if (!dumpJson) {
+    //     if (vos.expected_remaining.len > 0) return error.NotEnoughData;
+    // } else {
+    //     return error.DumpJsonEnabled;
+    // }
 }
 
 /// testHtml tests parser output against a json test file containing the expected output
@@ -133,4 +126,35 @@ pub fn testHtmlExpect(allocator: *std.mem.Allocator, expected: []const u8, value
     } else {
         return error.DumpHtmlEnabled;
     }
+}
+
+fn exec(allocator: *mem.Allocator, cwd: []const u8, expect_0: bool, argv: []const []const u8) !ChildProcess.ExecResult {
+    const max_output_size = 100 * 1024;
+    const result = ChildProcess.exec(.{
+        .allocator = allocator,
+        .argv = argv,
+        .cwd = cwd,
+        .max_output_bytes = max_output_size,
+    }) catch |err| {
+        std.debug.warn("The following command failed:\n", .{});
+        // printCmd(cwd, argv);
+        return err;
+    };
+    // switch (result.term) {
+    //     .Exited => |code| {
+    //         if ((code != 0) == expect_0) {
+    //             std.debug.warn("The following command exited with error code {}:\n", .{code});
+    //             // printCmd(cwd, argv);
+    //             std.debug.warn("stderr:\n{}\n", .{result.stderr});
+    //             return error.CommandFailed;
+    //         }
+    //     },
+    //     else => {
+    //         std.debug.warn("The following command terminated unexpectedly:\n", .{});
+    //         // printCmd(cwd, argv);
+    //         std.debug.warn("stderr:\n{}\n", .{result.stderr});
+    //         return error.CommandFailed;
+    //     },
+    // }
+    return result;
 }
