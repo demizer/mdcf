@@ -24,17 +24,6 @@
 
 # Things To Do
 
-## Sun Oct 25 22:09 2020: document "json-diff" test dependency and run in docker
-
-   https://github.com/andreyvit/json-diff
-
-   docker run -ti \
-           --rm \
-           -v $PWD:$PWD \
-           -w $PWD \
-           bwowk/json-diff \
-           file-a.json file-b.json
-
 ## Sun Oct 25 22:10 2020: Add diff support to html output
 
    Might need to beautify it first so it makes a good diff

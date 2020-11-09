@@ -12,6 +12,7 @@ const ChildProcess = std.ChildProcess;
 const TestError = error{
     TestNotFound,
     CouldNotCreateTempDirectory,
+    DockerRunFailed,
 };
 
 pub const TestKey = enum {
@@ -71,10 +72,6 @@ pub fn testJsonExpect(allocator: *mem.Allocator, expected: []const u8, value: an
     var temp_dir = try mktmp(allocator);
     defer allocator.free(temp_dir);
 
-    log.Debugf("temp directory: {}\n", .{temp_dir});
-
-    // const cwdPath = try fs.path.resolve(allocator, &[_][]const u8{"."});
-    // writeFile(temp_dir, "out.json", value);
     var file = try fs.path.join(allocator, &[_][]const u8{ temp_dir, "expect.json" });
     defer allocator.free(file);
     try writeFile(file, expected);
@@ -88,20 +85,31 @@ pub fn testJsonExpect(allocator: *mem.Allocator, expected: []const u8, value: an
             .separator = true,
         },
     }, buf.outStream());
+
     var file2 = try fs.path.join(allocator, &[_][]const u8{ temp_dir, "actual.json" });
     defer allocator.free(file2);
     try writeFile(file2, buf.items);
 
     const cwd = try fs.path.resolve(allocator, &[_][]const u8{"."});
     defer allocator.free(cwd);
-    var diff = try exec(allocator, cwd, true, &[_][]const u8{ "json-diff", "-C", file2, file });
-    log.Debugf("{}\n", .{diff});
+    var filemount = try std.mem.concat(allocator, u8, &[_][]const u8{ file, ":", file });
+    defer allocator.free(filemount);
+    var file2mount = try std.mem.concat(allocator, u8, &[_][]const u8{ file2, ":", file2 });
+    defer allocator.free(file2mount);
 
-    // if (!dumpJson) {
-    //     if (vos.expected_remaining.len > 0) return error.NotEnoughData;
-    // } else {
-    //     return error.DumpJsonEnabled;
-    // }
+    // The long way around until there is a better way to compare json in Zig
+    var cmd = &[_][]const u8{ "docker", "run", "-t", "-v", filemount, "-v", file2mount, "-w", cwd, "--rm", "bwowk/json-diff", "-C", file2, file };
+    try debugPrintExecCommand(allocator, cmd);
+
+    var diff = try exec(allocator, cwd, true, cmd);
+    if (diff.term.Exited != 0) {
+        log.Errorf("docker run failed: {}\n", .{diff});
+        return error.DockerRunFailed;
+    }
+
+    if (dumpJson) {
+        return error.DumpJsonEnabled;
+    }
 }
 
 /// testHtml tests parser output against a json test file containing the expected output
@@ -157,4 +165,14 @@ fn exec(allocator: *mem.Allocator, cwd: []const u8, expect_0: bool, argv: []cons
     //     },
     // }
     return result;
+}
+
+pub fn debugPrintExecCommand(allocator: *mem.Allocator, arry: [][]const u8) !void {
+    var cmd_buf = std.ArrayList(u8).init(allocator);
+    defer cmd_buf.deinit();
+    for (arry) |a| {
+        try cmd_buf.appendSlice(a);
+        try cmd_buf.append(' ');
+    }
+    log.Debugf("exec cmd: {}\n", .{cmd_buf.items});
 }

@@ -45,3 +45,13 @@ pub fn Error(comptime str: []const u8) void {
 pub fn Errorf(comptime fmt: []const u8, args: anytype) void {
     log.Errorf(fmt, args);
 }
+
+pub fn Fatal(comptime str: []const u8) void {
+    log.Fatal(str);
+    std.os.exit(1);
+}
+
+pub fn Fatalf(comptime fmt: []const u8, args: anytype) void {
+    log.Fatalf(fmt, args);
+    std.os.exit(1);
+}

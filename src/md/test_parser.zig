@@ -35,7 +35,7 @@ test "Parser Test 001" {
     defer allocator.free(expectHtml);
 
     // FIXME: use jsondiff.com to dump better failure output
-    try testUtil.testJsonExpect(expectJson, p.root.items, false);
+    try testUtil.testJsonExpect(expectJson, p.root.items, false) catch |err| log.Fatalf("Test failed with {}\n", .{err});
     try testUtil.testHtmlExpect(allocator, expectHtml, &p.root, false);
 }
 
@@ -55,7 +55,7 @@ test "Parser Test 002" {
     defer allocator.free(expectHtml);
 
     // FIXME: use jsondiff.com to dump better failure output
-    try testUtil.testJsonExpect(expectJson, p.root.items, false);
+    try testUtil.testJsonExpect(expectJson, p.root.items, false) catch |err| log.Fatalf("Test failed with {}\n", .{err});
     try testUtil.testHtmlExpect(allocator, expectHtml, &p.root, false);
 }
 
@@ -75,8 +75,12 @@ test "Parser Test 003" {
     defer allocator.free(expectHtml);
 
     // FIXME: use jsondiff.com to dump better failure output
-    try testUtil.testJsonExpect(allocator, expectJson, p.root.items, true);
-    // try testUtil.testHtmlExpect(allocator, expectHtml, &p.root, false);
+    testUtil.testJsonExpect(allocator, expectJson, p.root.items, true) catch |err| log.Fatalf("Test failed with {}\n", .{err});
+
+    // testUtil.testHtmlExpect(allocator, expectHtml, &p.root, false) catch |err| {
+    //     log.Errorf("testHtmlExpect failed with {}\n", .{err});
+    //     std.os.exit(1);
+    // };
 }
 
 test "Parser Test 032" {
@@ -95,9 +99,7 @@ test "Parser Test 032" {
 
     var out = p.parse(input);
 
-    // FIXME: Would be much easier to debug if we used real json diff...
-    //        Run jsondiff in a container: https://github.com/zgrossbart/jdd or... use a zig json diff library.
-    testUtil.testJsonExpect(expect, p.root.items, false) catch |err| log.Debug("error yo");
+    testUtil.testJsonExpect(expect, p.root.items, false) catch |err| log.Fatalf("Test failed with {}\n", .{err});
 }
 
 test "Test Convert HTML 032" {
