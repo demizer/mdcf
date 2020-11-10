@@ -8,9 +8,9 @@
             "Offset": 0
         },
         "PositionEnd": {
-            "Line": 1,
-            "Column": 10,
-            "Offset": 17
+            "Line": 2,
+            "Column": 8,
+            "Offset": 15
         },
         "Children": [{
             "ID": "Text",
@@ -22,7 +22,7 @@
             },
             "PositionEnd": {
                 "Line": 2,
-                "Column": 7,
+                "Column": 8,
                 "Offset": 15
             },
             "Children": [],

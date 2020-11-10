@@ -24,17 +24,11 @@
 
 # Things To Do
 
-## Sun Oct 25 22:10 2020: Add diff support to html output
+## Mon Nov 09 18:13 2020: use html-diff in a container if the diff streamer fails
 
-   Might need to beautify it first so it makes a good diff
-
-## Sun Oct 25 22:11 2020: rename project to markzig
+   https://github.com/bem/html-differ
 
 ## Mon Jun 01 15:54 2020: Add markzig to awesome-zig
-
-## Sat Jun 06 13:39 2020: Remove the json / html comparitor
-
-   It sucks. Just dump both the expect and got and that's it.
 
 ### Sat Jun 06 13:47 2020: move test convert html 32 to parse test 32 test func
 
@@ -43,3 +37,32 @@
 ## Mon Jun 01 11:30 2020: Parse lists
 
 ## Mon Jun 01 11:31 2020: Announce on reddit
+
+# DONE THINGS
+
+## Sat Jun 06 13:39 2020: Remove the json / html comparitor
+   :DONE: Mon Nov 09 20:38 2020
+
+   It sucks. Just dump both the expect and got and that's it.
+
+## Sun Oct 25 22:11 2020: rename project to markzig
+   :DONE: Mon Nov 09 20:38 2020
+
+## Mon Nov 09 11:36 2020: only run docker json-diff if the json actually differs.
+   :DONE: Mon Nov 09 20:37 2020
+
+   Get the old system from git history and restore it.
+
+   Check the json using zig, if it fails, then use json-diff.
+
+## Mon Nov 09 12:27 2020: printing of Token and Node should escape the string better:
+   :DONE: Mon Nov 09 20:37 2020
+
+   It's hard to see what is going on here:
+
+   1604953496 [DEBUG]: expect: Token{ .ID = TokenId.Whitespace, .startOffset = 0, .endOffset = 0, .string =        , .lineNumber = 1, .column = 1 }
+   1604953496 [DEBUG]: got: Token{ .ID = TokenId.Whitespace, .startOffset = 0, .endOffset = 0, .string =   , .lineNumber = 1, .column = 1 }
+
+   The .string section should be escaped and enclosed with ''.
+
+   Maybe there is a pretty print module for zig.

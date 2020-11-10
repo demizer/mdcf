@@ -84,6 +84,9 @@ pub const Lexer = struct {
             column = l.tokens.items[l.tokens.items.len - 1].column;
             l.lineNumber -= 1;
         }
+        if (mem.eql(u8, str, "\n")) {
+            l.lineNumber += 1;
+        }
         var newTok = Token{
             .ID = tok,
             .startOffset = startOffset,
@@ -96,9 +99,6 @@ pub const Lexer = struct {
         try l.tokens.append(newTok);
         l.bufIndex = endOffset;
         l.tokenIndex = l.tokens.items.len - 1;
-        if (mem.eql(u8, str, "\n")) {
-            l.lineNumber += 1;
-        }
         return newTok;
     }
 
@@ -212,17 +212,6 @@ pub fn ruleEOF(t: *Lexer) !?Token {
         return t.emit(.EOF, t.bufIndex, t.bufIndex);
     }
     return null;
-}
-
-pub fn checkToken(val: Token, expect: Token) void {
-    log.Debugf("expect: {}\n", .{expect});
-    log.Debugf("got: {}\n", .{val});
-    assert(val.ID == expect.ID);
-    assert(val.startOffset == expect.startOffset);
-    assert(val.endOffset == expect.endOffset);
-    assert(val.column == expect.column);
-    assert(val.lineNumber == expect.lineNumber);
-    assert(mem.eql(u8, val.string, expect.string));
 }
 
 test "lexer: peekNext " {
