@@ -34,8 +34,8 @@ test "Lexer Test 001" {
     var t = try runLexerTest(1);
     defer t.deinit();
     const expectJson = @embedFile("../../test/expect/lexer/testl_001.json");
-    if (testUtil.compareJsonExpect(allocator, expectJson, t.tokens.items)) |actualJson| {
-        // log.Errorf("TEST FAILED! lexer tokens (in json):\n{}\n", .{actualJson});
+    if (try testUtil.compareJsonExpect(allocator, expectJson, t.tokens.items)) |ajson| {
+        // log.Errorf("TEST FAILED! lexer tokens (in json):\n{}\n", .{ajson});
         std.os.exit(1);
     }
 }
@@ -45,8 +45,8 @@ test "Lexer Test 002" {
     var t = try runLexerTest(2);
     defer t.deinit();
     const expectJson = @embedFile("../../test/expect/lexer/testl_002.json");
-    if (testUtil.compareJsonExpect(allocator, expectJson, t.tokens.items)) |actualJson| {
-        // log.Errorf("TEST FAILED! lexer tokens (in json):\n{}\n", .{actualJson});
+    if (try testUtil.compareJsonExpect(allocator, expectJson, t.tokens.items)) |ajson| {
+        // log.Errorf("TEST FAILED! lexer tokens (in json):\n{}\n", .{ajson});
         std.os.exit(1);
     }
 }
@@ -56,8 +56,8 @@ test "Lexer Test 003" {
     var t = try runLexerTest(3);
     defer t.deinit();
     const expectJson = @embedFile("../../test/expect/lexer/testl_003.json");
-    if (testUtil.compareJsonExpect(allocator, expectJson, t.tokens.items)) |actualJson| {
-        // log.Errorf("TEST FAILED! lexer tokens (in json):\n{}\n", .{actualJson});
+    if (try testUtil.compareJsonExpect(allocator, expectJson, t.tokens.items)) |ajson| {
+        // log.Errorf("TEST FAILED! lexer tokens (in json):\n{}\n", .{ajson});
         std.os.exit(1);
     }
 }
@@ -67,8 +67,8 @@ test "Lexer Test 032" {
     var t = try runLexerTest(32);
     defer t.deinit();
     const expectJson = @embedFile("../../test/expect/lexer/testl_032.json");
-    if (testUtil.compareJsonExpect(allocator, expectJson, t.tokens.items)) |actualJson| {
-        // log.Errorf("TEST FAILED! lexer tokens (in json):\n{}\n", .{actualJson});
+    if (try testUtil.compareJsonExpect(allocator, expectJson, t.tokens.items)) |ajson| {
+        // log.Errorf("TEST FAILED! lexer tokens (in json):\n{}\n", .{ajson});
         std.os.exit(1);
     }
 }

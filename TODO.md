@@ -24,6 +24,8 @@
 
 # Things To Do
 
+i was last going to merge the lexer, parse, and html tests into a single test
+
 ## Mon Nov 09 20:54 2020: combine lexer, parser, and html tests into one test function.
 
    Do each in order to reduce time to run tests.

@@ -162,11 +162,10 @@ pub fn dockerRunJsonDiff(allocator: *mem.Allocator, actualJson: []const u8, expe
 }
 
 /// compareJsonExpect tests parser output against a json test file containing the expected output
-/// TODO: fix this documentation when this is worked out enough
 /// - expected: The expected json output. Use @embedFile()!
-/// - value: The parser root to test.
-/// - dumpJson: If true, only the json value of "value" will be dumped to stdout.
-pub fn compareJsonExpect(allocator: *mem.Allocator, expected: []const u8, value: anytype) ?[]const u8 {
+/// - value: The value to test against the expected json. This will be marshaled to json.
+/// - returns: An error or optional: null (on success) or "value" encoded as json on compare failure.
+pub fn compareJsonExpect(allocator: *mem.Allocator, expected: []const u8, value: anytype) !?[]const u8 {
     // check with zig stream validator
     var dumpBuf = std.ArrayList(u8).init(allocator);
     defer dumpBuf.deinit();
@@ -183,29 +182,17 @@ pub fn compareJsonExpect(allocator: *mem.Allocator, expected: []const u8, value:
         // human readable diff
         log.Debug("ValidationOutStream failed! Running json-diff...");
 
-        var tempDir = mktmp(allocator) catch |merr| {
-            log.Errorf("error running mktemp: {}\n", .{err});
-            return "error";
-        };
+        var tempDir = try mktmp(allocator);
         defer allocator.free(tempDir);
 
-        var expectJsonPath = writeFile(allocator, tempDir, "expect.json", expected) catch |ejerr| {
-            log.Errorf("error writing expectJsonPath: {}\n", .{ejerr});
-            return "error";
-        };
-
+        var expectJsonPath = try writeFile(allocator, tempDir, "expect.json", expected);
         defer allocator.free(expectJsonPath);
-        var actualJsonPath = writeJson(allocator, tempDir, "actual.json", value) catch |ajerr| {
-            log.Errorf("error writing actualJsonPath: {}\n", .{ajerr});
-            return "error";
-        };
 
+        var actualJsonPath = try writeJson(allocator, tempDir, "actual.json", value);
         defer allocator.free(actualJsonPath);
+
         dockerRunJsonDiff(allocator, actualJsonPath, expectJsonPath) catch |err2| {
-            json.stringify(value, stringyOpts, dumpBuf.outStream()) catch |err3| {
-                log.Errorf("error in json.stringify: {}\n", .{err3});
-                return "error";
-            };
+            try json.stringify(value, stringyOpts, dumpBuf.outStream());
             return dumpBuf.toOwnedSlice();
         };
     };
