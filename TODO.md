@@ -24,17 +24,29 @@
 
 # Things To Do
 
+## Mon Nov 09 20:54 2020: combine lexer, parser, and html tests into one test function.
+
+   Do each in order to reduce time to run tests.
+
 ## Mon Nov 09 18:13 2020: use html-diff in a container if the diff streamer fails
 
    https://github.com/bem/html-differ
 
-## Mon Jun 01 15:54 2020: Add markzig to awesome-zig
+## Mon Nov 09 21:57 2020: fix date/time logging in md/log.zig
+
+## Mon Nov 09 21:26 2020: update outStream to writer in all files
+
+## Mon Nov 09 21:56 2020: use testing.TmpDir instead of mktemp command
+
+## Mon Nov 09 20:45 2020: fix linting errors is md/log.zig
 
 ### Sat Jun 06 13:47 2020: move test convert html 32 to parse test 32 test func
 
 ## Mon Jun 01 11:30 2020: Parse inline blocks
 
 ## Mon Jun 01 11:30 2020: Parse lists
+
+## Mon Jun 01 15:54 2020: Add markzig to awesome-zig
 
 ## Mon Jun 01 11:31 2020: Announce on reddit
 

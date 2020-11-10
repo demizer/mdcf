@@ -44,16 +44,11 @@ const ValidationOutStream = struct {
 
     expected_remaining: []const u8,
 
-    DumpBuffer: ?*std.ArrayList(u8) = null,
     pub const OutStream = std.io.OutStream(*Self, Error, write);
-    pub const Error = error{
-        DumpBufferWriteError,
-        DifferentData,
-    };
+    pub const Error = error{DifferentData};
 
-    fn init(exp: []const u8, dumpBuffer: ?*std.ArrayList(u8)) Self {
+    fn init(exp: []const u8) Self {
         return .{
-            .DumpBuffer = dumpBuffer,
             .expected_remaining = exp,
         };
     }
@@ -63,11 +58,6 @@ const ValidationOutStream = struct {
     }
 
     fn write(self: *Self, bytes: []const u8) Error!usize {
-        if (self.DumpBuffer) |buf| {
-            buf.writer().writeAll(bytes) catch |err| {
-                return error.DumpBufferWriteError;
-            };
-        }
         if (self.expected_remaining.len < bytes.len) {
             return error.DifferentData;
         }
@@ -172,34 +162,54 @@ pub fn dockerRunJsonDiff(allocator: *mem.Allocator, actualJson: []const u8, expe
 }
 
 /// compareJsonExpect tests parser output against a json test file containing the expected output
+/// TODO: fix this documentation when this is worked out enough
 /// - expected: The expected json output. Use @embedFile()!
 /// - value: The parser root to test.
 /// - dumpJson: If true, only the json value of "value" will be dumped to stdout.
-pub fn compareJsonExpect(allocator: *mem.Allocator, expected: []const u8, value: anytype, dumpJson: bool) !void {
+pub fn compareJsonExpect(allocator: *mem.Allocator, expected: []const u8, value: anytype) ?[]const u8 {
     // check with zig stream validator
-    var dumpBuf: ?*std.ArrayList(u8) = null;
-    if (dumpJson) {
-        dumpBuf = &std.ArrayList(u8).init(allocator);
-        // defer dumpBuf.deinit();
-    }
-    var vos = ValidationOutStream.init(expected, dumpBuf);
-    json.stringify(value, json.StringifyOptions{
+    var dumpBuf = std.ArrayList(u8).init(allocator);
+    defer dumpBuf.deinit();
+
+    var stringyOpts = json.StringifyOptions{
         .whitespace = .{
             .indent = .{ .Space = 4 },
             .separator = true,
         },
-    }, vos.outStream()) catch |err| {
-        log.Debug("ValidationOutStream failed! Running json-diff...");
-        // human readable diff
-        var tempDir = try mktmp(allocator);
-        defer allocator.free(tempDir);
-        var expectJson = try writeFile(allocator, tempDir, "expect.json", expected);
-        defer allocator.free(expectJson);
-        var actualJson = try writeJson(allocator, tempDir, "actual.json", value);
-        defer allocator.free(actualJson);
-        try dockerRunJsonDiff(allocator, actualJson, expectJson);
     };
-    // _ = try vos.outStream().write("\n");
+
+    var vos = ValidationOutStream.init(expected);
+    json.stringify(value, stringyOpts, vos.outStream()) catch |err| {
+        // human readable diff
+        log.Debug("ValidationOutStream failed! Running json-diff...");
+
+        var tempDir = mktmp(allocator) catch |merr| {
+            log.Errorf("error running mktemp: {}\n", .{err});
+            return "error";
+        };
+        defer allocator.free(tempDir);
+
+        var expectJsonPath = writeFile(allocator, tempDir, "expect.json", expected) catch |ejerr| {
+            log.Errorf("error writing expectJsonPath: {}\n", .{ejerr});
+            return "error";
+        };
+
+        defer allocator.free(expectJsonPath);
+        var actualJsonPath = writeJson(allocator, tempDir, "actual.json", value) catch |ajerr| {
+            log.Errorf("error writing actualJsonPath: {}\n", .{ajerr});
+            return "error";
+        };
+
+        defer allocator.free(actualJsonPath);
+        dockerRunJsonDiff(allocator, actualJsonPath, expectJsonPath) catch |err2| {
+            json.stringify(value, stringyOpts, dumpBuf.outStream()) catch |err3| {
+                log.Errorf("error in json.stringify: {}\n", .{err3});
+                return "error";
+            };
+            return dumpBuf.toOwnedSlice();
+        };
+    };
+    return null;
 }
 
 /// testHtml tests parser output against a json test file containing the expected output
