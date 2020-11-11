@@ -25,12 +25,12 @@ test "Test Example 001" {
     defer p.deinit();
     _ = try p.parse(parserInput);
     log.Debug("Testing lexer");
-    const expectLexerJson = @embedFile("expect/section-tabs/testl_001.json");
+    const expectLexerJson = @embedFile("expect/01-section-tabs/testl_001.json");
     if (try testUtil.compareJsonExpect(allocator, expectLexerJson, p.lex.tokens.items)) |ajson| {
         std.os.exit(1);
     }
     log.Debug("Testing parser");
-    const expectParserJson = @embedFile("expect/section-tabs/testp_001.json");
+    const expectParserJson = @embedFile("expect/01-section-tabs/testp_001.json");
     if (try testUtil.compareJsonExpect(allocator, expectParserJson, p.root.items)) |ajson| {
         std.os.exit(1);
     }
@@ -52,12 +52,12 @@ test "Test Example 002" {
     defer p.deinit();
     _ = try p.parse(parserInput);
     log.Debug("Testing lexer");
-    const expectLexerJson = @embedFile("expect/section-tabs/testl_002.json");
+    const expectLexerJson = @embedFile("expect/01-section-tabs/testl_002.json");
     if (try testUtil.compareJsonExpect(allocator, expectLexerJson, p.lex.tokens.items)) |ajson| {
         std.os.exit(1);
     }
     log.Debug("Testing parser");
-    const expectParserJson = @embedFile("expect/section-tabs/testp_002.json");
+    const expectParserJson = @embedFile("expect/01-section-tabs/testp_002.json");
     if (try testUtil.compareJsonExpect(allocator, expectParserJson, p.root.items)) |ajson| {
         std.os.exit(1);
     }
@@ -79,13 +79,13 @@ test "Test Example 003" {
     defer p.deinit();
     _ = try p.parse(parserInput);
     log.Debug("Testing lexer");
-    const expectLexerJson = @embedFile("expect/section-tabs/testl_003.json");
+    const expectLexerJson = @embedFile("expect/01-section-tabs/testl_003.json");
     if (try testUtil.compareJsonExpect(allocator, expectLexerJson, p.lex.tokens.items)) |ajson| {
         // log.Errorf("LEXER TEST FAILED! lexer tokens (in json):\n{}\n", .{ajson});
         std.os.exit(1);
     }
     log.Debug("Testing parser");
-    const expectParserJson = @embedFile("expect/section-tabs/testp_003.json");
+    const expectParserJson = @embedFile("expect/01-section-tabs/testp_003.json");
     if (try testUtil.compareJsonExpect(allocator, expectParserJson, p.root.items)) |ajson| {
         // log.Errorf("PARSER TEST FAILED! parser tree (in json):\n{}\n", .{ajson});
         std.os.exit(1);

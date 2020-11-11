@@ -25,13 +25,13 @@ test "Test Example 032" {
     defer p.deinit();
     _ = try p.parse(parserInput);
     log.Debug("Testing lexer");
-    const expectLexerJson = @embedFile("expect/section-atx-headings/testl_032.json");
+    const expectLexerJson = @embedFile("expect/03-section-atx-headings/testl_032.json");
     if (try testUtil.compareJsonExpect(allocator, expectLexerJson, p.lex.tokens.items)) |ajson| {
         // log.Errorf("LEXER TEST FAILED! lexer tokens (in json):\n{}\n", .{ajson});
         std.os.exit(1);
     }
     log.Debug("Testing parser");
-    const expectParserJson = @embedFile("expect/section-atx-headings/testp_032.json");
+    const expectParserJson = @embedFile("expect/03-section-atx-headings/testp_032.json");
     if (try testUtil.compareJsonExpect(allocator, expectParserJson, p.root.items)) |ajson| {
         // log.Errorf("PARSER TEST FAILED! parser tree (in json):\n{}\n", .{ajson});
         std.os.exit(1);
