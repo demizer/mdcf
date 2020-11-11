@@ -21,26 +21,48 @@ test "Test Example 001" {
     const testNumber: u8 = 1;
     const parserInput = try testUtil.getTest(allocator, testNumber, testUtil.TestKey.markdown);
     testUtil.dumpTest(parserInput);
-
     var p = Parser.init(allocator);
     defer p.deinit();
     _ = try p.parse(parserInput);
-
     log.Debug("Testing lexer");
     const expectLexerJson = @embedFile("expect/lexer/testl_001.json");
+    if (try testUtil.compareJsonExpect(allocator, expectLexerJson, p.lex.tokens.items)) |ajson| {
+        std.os.exit(1);
+    }
+    log.Debug("Testing parser");
+    const expectParserJson = @embedFile("expect/parser/testp_001.json");
+    if (try testUtil.compareJsonExpect(allocator, expectParserJson, p.root.items)) |ajson| {
+        std.os.exit(1);
+    }
+    log.Debug("Testing html translator");
+    const expectHtml = try testUtil.getTest(allocator, testNumber, testUtil.TestKey.html);
+    defer allocator.free(expectHtml);
+    if (try testUtil.compareHtmlExpect(allocator, expectHtml, &p.root)) |ahtml| {
+        std.os.exit(1);
+    }
+}
+
+// "markdown": "# foo\n## foo\n### foo\n#### foo\n##### foo\n###### foo\n",
+// "html": "<h1>foo</h1>\n<h2>foo</h2>\n<h3>foo</h3>\n<h4>foo</h4>\n<h5>foo</h5>\n<h6>foo</h6>\n",
+test "Test Example 032" {
+    const testNumber: u8 = 32;
+    const parserInput = try testUtil.getTest(allocator, testNumber, testUtil.TestKey.markdown);
+    testUtil.dumpTest(parserInput);
+    var p = Parser.init(allocator);
+    defer p.deinit();
+    _ = try p.parse(parserInput);
+    log.Debug("Testing lexer");
+    const expectLexerJson = @embedFile("expect/lexer/testl_032.json");
     if (try testUtil.compareJsonExpect(allocator, expectLexerJson, p.lex.tokens.items)) |ajson| {
         // log.Errorf("LEXER TEST FAILED! lexer tokens (in json):\n{}\n", .{ajson});
         std.os.exit(1);
     }
-
     log.Debug("Testing parser");
-    // Used https://codebeautify.org/xmltojson to convert ast from spec to json
-    const expectParserJson = @embedFile("expect/parser/testp_001.json");
+    const expectParserJson = @embedFile("expect/parser/testp_032.json");
     if (try testUtil.compareJsonExpect(allocator, expectParserJson, p.root.items)) |ajson| {
         // log.Errorf("PARSER TEST FAILED! parser tree (in json):\n{}\n", .{ajson});
         std.os.exit(1);
     }
-
     log.Debug("Testing html translator");
     const expectHtml = try testUtil.getTest(allocator, testNumber, testUtil.TestKey.html);
     defer allocator.free(expectHtml);
