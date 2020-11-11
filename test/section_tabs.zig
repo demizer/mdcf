@@ -26,12 +26,14 @@ test "Test Example 001" {
     defer p.deinit();
     _ = try p.parse(parserInput);
 
+    log.Debug("Testing lexer");
     const expectLexerJson = @embedFile("expect/lexer/testl_001.json");
     if (try testUtil.compareJsonExpect(allocator, expectLexerJson, p.lex.tokens.items)) |ajson| {
         // log.Errorf("LEXER TEST FAILED! lexer tokens (in json):\n{}\n", .{ajson});
         std.os.exit(1);
     }
 
+    log.Debug("Testing parser");
     // Used https://codebeautify.org/xmltojson to convert ast from spec to json
     const expectParserJson = @embedFile("expect/parser/testp_001.json");
     if (try testUtil.compareJsonExpect(allocator, expectParserJson, p.root.items)) |ajson| {
@@ -39,10 +41,11 @@ test "Test Example 001" {
         std.os.exit(1);
     }
 
-    // const expectHtml = try testUtil.getTest(allocator, testNumber, testUtil.TestKey.html);
-    // defer allocator.free(expectHtml);
-    // if (try testUtil.testHtmlExpect(allocator, expectHtml, &p.root, false)) |ahtml| {
-    //     // log.Errorf("HTML TRANSLATE TEST FAILED! html:\n{}\n", .{ahtml});
-    //     std.os.exit(1);
-    // }
+    log.Debug("Testing html translator");
+    const expectHtml = try testUtil.getTest(allocator, testNumber, testUtil.TestKey.html);
+    defer allocator.free(expectHtml);
+    if (try testUtil.compareHtmlExpect(allocator, expectHtml, &p.root)) |ahtml| {
+        // log.Errorf("HTML TRANSLATE TEST FAILED! html:\n{}\n", .{ahtml});
+        std.os.exit(1);
+    }
 }

@@ -99,6 +99,7 @@ pub const Token = struct {
                 try whitespace.outputIndent(out_stream);
             }
         }
+        try out_stream.writeByte(' ');
         try out_stream.writeByte('}');
         return;
     }

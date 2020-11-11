@@ -21,26 +21,6 @@ pub const TestKey = enum {
     html,
 };
 
-/// Caller owns returned memory
-pub fn getTest(allocator: *mem.Allocator, number: i32, key: TestKey) ![]const u8 {
-    const cwd = fs.cwd();
-    // path is relative to test.zig in the project root
-    const source = try cwd.readFileAlloc(allocator, "test/expect/spec/commonmark_spec_0.29.json", math.maxInt(usize));
-    defer allocator.free(source);
-    var json_parser = std.json.Parser.init(allocator, true);
-    defer json_parser.deinit();
-    var json_tree = try json_parser.parse(source);
-    defer json_tree.deinit();
-    const stdout = &std.io.getStdOut().outStream();
-    for (json_tree.root.Array.items) |value, i| {
-        var example_num = value.Object.get("example").?.Integer;
-        if (example_num == number) {
-            return try allocator.dupe(u8, value.Object.get(@tagName(key)).?.String);
-        }
-    }
-    return TestError.TestNotFound;
-}
-
 const ValidationOutStream = struct {
     const Self = @This();
 
@@ -61,15 +41,55 @@ const ValidationOutStream = struct {
 
     fn write(self: *Self, bytes: []const u8) Error!usize {
         if (self.expected_remaining.len < bytes.len) {
+            std.debug.warn(
+                \\====== expected this output: =========
+                \\{}
+                \\======== instead found this: =========
+                \\{}
+                \\======================================
+            , .{
+                self.expected_remaining[0..bytes.len],
+                bytes,
+            });
             return error.DifferentData;
         }
         if (!mem.eql(u8, self.expected_remaining[0..bytes.len], bytes)) {
+            std.debug.warn(
+                \\====== expected this output: =========
+                \\{}
+                \\======== instead found this: =========
+                \\{}
+                \\======================================
+            , .{
+                self.expected_remaining[0..bytes.len],
+                bytes,
+            });
             return error.DifferentData;
         }
         self.expected_remaining = self.expected_remaining[bytes.len..];
         return bytes.len;
     }
 };
+
+/// Caller owns returned memory
+pub fn getTest(allocator: *mem.Allocator, number: i32, key: TestKey) ![]const u8 {
+    const cwd = fs.cwd();
+    // path is relative to test.zig in the project root
+    const source = try cwd.readFileAlloc(allocator, "test/expect/spec/commonmark_spec_0.29.json", math.maxInt(usize));
+    defer allocator.free(source);
+    var json_parser = std.json.Parser.init(allocator, true);
+    defer json_parser.deinit();
+    var json_tree = try json_parser.parse(source);
+    defer json_tree.deinit();
+    const stdout = &std.io.getStdOut().outStream();
+    for (json_tree.root.Array.items) |value, i| {
+        var example_num = value.Object.get("example").?.Integer;
+        if (example_num == number) {
+            return try allocator.dupe(u8, value.Object.get(@tagName(key)).?.String);
+        }
+    }
+    return TestError.TestNotFound;
+}
 
 pub fn mktmp(allocator: *mem.Allocator) ![]const u8 {
     const cwd = try fs.path.resolve(allocator, &[_][]const u8{"."});
@@ -179,50 +199,37 @@ pub fn compareJsonExpect(allocator: *mem.Allocator, expected: []const u8, value:
         },
     };
 
-    var vos = ValidationOutStream.init(expected);
-    json.stringify(value, stringyOpts, vos.outStream()) catch |err| {
-        // human readable diff
-        log.Debug("ValidationOutStream failed! Running json-diff...");
+    // human readable diff
+    var tempDir = try mktmp(allocator);
+    defer allocator.free(tempDir);
 
-        var tempDir = try mktmp(allocator);
-        defer allocator.free(tempDir);
+    var expectJsonPath = try writeFile(allocator, tempDir, "expect.json", expected);
+    defer allocator.free(expectJsonPath);
 
-        var expectJsonPath = try writeFile(allocator, tempDir, "expect.json", expected);
-        defer allocator.free(expectJsonPath);
+    var actualJsonPath = try writeJson(allocator, tempDir, "actual.json", value);
+    defer allocator.free(actualJsonPath);
 
-        var actualJsonPath = try writeJson(allocator, tempDir, "actual.json", value);
-        defer allocator.free(actualJsonPath);
-
-        dockerRunJsonDiff(allocator, actualJsonPath, expectJsonPath) catch |err2| {
-            try json.stringify(value, stringyOpts, dumpBuf.outStream());
-            return dumpBuf.toOwnedSlice();
-        };
+    // FIXME: replace with zig json diff
+    dockerRunJsonDiff(allocator, actualJsonPath, expectJsonPath) catch |err2| {
+        try json.stringify(value, stringyOpts, dumpBuf.outStream());
+        return dumpBuf.toOwnedSlice();
     };
     return null;
 }
 
-/// testHtml tests parser output against a json test file containing the expected output
+/// compareHtmlExpect tests parser output against a json test file containing the expected output
 /// - expected: The expected html output. Use @embedFile()!
 /// - value: The translated parser output.
 /// - dumpHtml: If true, only the json value of "value" will be dumped to stdout.
-pub fn testHtmlExpect(allocator: *std.mem.Allocator, expected: []const u8, value: *std.ArrayList(Node), dumpHtml: bool) !void {
-    if (dumpHtml) {
-        log.Debugf("expect: {}got: ", .{expected});
-    }
-    var vos = ValidationOutStream.init(expected, dumpHtml);
-
+pub fn compareHtmlExpect(allocator: *std.mem.Allocator, expected: []const u8, value: *std.ArrayList(Node)) !?[]const u8 {
+    var vos = ValidationOutStream.init(expected);
     var buf = std.ArrayList(u8).init(allocator);
     defer buf.deinit();
-
     try translate.markdownToHtml(value, buf.outStream());
-
-    _ = try vos.outStream().write(buf.items);
-    // _ = try vos.outStream().write("\n");
-    if (!dumpHtml) {
-        if (vos.expected_remaining.len > 0) return error.NotEnoughData;
-    } else {
-        return error.DumpHtmlEnabled;
-    }
+    _ = vos.outStream().write(buf.items) catch |err| {
+        return buf.items;
+    };
+    return null;
 }
 
 pub fn dumpTest(input: []const u8) void {
