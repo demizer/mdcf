@@ -4,10 +4,11 @@ const fmt = std.fmt;
 const mem = std.mem;
 const math = std.math;
 const json = std.json;
-const log = @import("log.zig");
-const translate = @import("translate.zig");
-const Node = @import("parse.zig").Node;
 const ChildProcess = std.ChildProcess;
+
+const log = @import("../src/md/log.zig");
+const translate = @import("../src/md/translate.zig");
+const Node = @import("../src/md/parse.zig").Node;
 
 const TestError = error{
     TestNotFound,
@@ -23,7 +24,8 @@ pub const TestKey = enum {
 /// Caller owns returned memory
 pub fn getTest(allocator: *mem.Allocator, number: i32, key: TestKey) ![]const u8 {
     const cwd = fs.cwd();
-    const source = try cwd.readFileAlloc(allocator, "test/commonmark_spec_0.29.json", math.maxInt(usize));
+    // path is relative to test.zig in the project root
+    const source = try cwd.readFileAlloc(allocator, "test/expect/spec/commonmark_spec_0.29.json", math.maxInt(usize));
     defer allocator.free(source);
     var json_parser = std.json.Parser.init(allocator, true);
     defer json_parser.deinit();
@@ -221,4 +223,10 @@ pub fn testHtmlExpect(allocator: *std.mem.Allocator, expected: []const u8, value
     } else {
         return error.DumpHtmlEnabled;
     }
+}
+
+pub fn dumpTest(input: []const u8) void {
+    log.config(log.logger.Level.Debug, true);
+    std.debug.warn("{}", .{"\n"});
+    log.Debugf("test:\n{}-- END OF TEST --\n", .{input});
 }

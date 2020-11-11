@@ -13,6 +13,11 @@ pub fn ruleInline(l: *Lexer) !?token.Token {
         }
     }
     if (index > l.bufIndex) {
+        //     // log.Debug("in here yo");
+        //     log.Debugf("foo: {}\n", .{l.bufIndex});
+        // if (true) {
+        //     @panic("boo!");
+        // }
         return l.emit(.Text, l.bufIndex, index);
     }
     return null;

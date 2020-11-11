@@ -24,7 +24,7 @@
 
 # Things To Do
 
-i was last going to merge the lexer, parse, and html tests into a single test
+## Tue Nov 10 15:01 2020: add line number to log output
 
 ## Mon Nov 09 20:54 2020: combine lexer, parser, and html tests into one test function.
 

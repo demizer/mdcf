@@ -2,13 +2,14 @@ const std = @import("std");
 const assert = std.debug.assert;
 const mem = std.mem;
 const ArrayList = std.ArrayList;
+const json = std.json;
+
+const log = @import("log.zig");
 const Token = @import("token.zig").Token;
 const TokenRule = @import("token.zig").TokenRule;
 const TokenId = @import("token.zig").TokenId;
 const atxRules = @import("token_atx_heading.zig");
 const inlineRules = @import("token_inline.zig");
-const log = @import("log.zig");
-const testUtil = @import("test_util.zig");
 
 pub const Lexer = struct {
     buffer: []const u8,
@@ -17,12 +18,14 @@ pub const Lexer = struct {
     tokens: ArrayList(Token),
     tokenIndex: u64,
     lineNumber: u32,
+    allocator: *mem.Allocator,
 
     pub fn init(allocator: *mem.Allocator, buffer: []const u8) !Lexer {
         // Skip the UTF-8 BOM if present
         var t = Lexer{
             .buffer = buffer,
             .bufIndex = 0,
+            .allocator = allocator,
             .rules = ArrayList(TokenRule).init(allocator),
             .tokens = ArrayList(Token).init(allocator),
             .tokenIndex = 0,
@@ -72,6 +75,21 @@ pub const Lexer = struct {
         return l.buffer[bufIndex];
     }
 
+    pub fn debugPrintToken(l: *Lexer, msg: []const u8, token: anytype) !void {
+        // TODO: only stringify json if debug logging
+        var buf = std.ArrayList(u8).init(l.allocator);
+        defer buf.deinit();
+        try json.stringify(token, json.StringifyOptions{
+            // This works differently than normal StringifyOptions for Tokens, separator does not
+            // add \n.
+            .whitespace = .{
+                .indent = .{ .Space = 1 },
+                .separator = true,
+            },
+        }, buf.outStream());
+        log.Debugf("{}: {}\n", .{ msg, buf.items });
+    }
+
     pub fn emit(l: *Lexer, tok: TokenId, startOffset: u32, endOffset: u32) !?Token {
         // log.Debugf("start: {} end: {}\n", .{ start, end });
         var str = l.buffer[startOffset..endOffset];
@@ -79,13 +97,21 @@ pub const Lexer = struct {
         if ((endOffset - startOffset) == 1 or nEndOffset < startOffset) {
             nEndOffset = startOffset;
         }
+        // check if token already emitted
+        if (l.tokens.items.len > l.tokenIndex) {
+            // try l.debugPrintToken("lexer last token", l.tokens.items[l.tokens.items.len - 1]);
+            var lastTok = l.tokens.items[l.tokens.items.len - 1];
+            if (lastTok.ID == tok and lastTok.startOffset == startOffset and lastTok.endOffset == nEndOffset) {
+                log.Debug("Token already encountered");
+                l.tokenIndex = l.tokens.items.len - 1;
+                l.bufIndex = endOffset;
+                return lastTok;
+            }
+        }
         var column: u32 = l.offsetToColumn(startOffset);
         if (tok == TokenId.EOF) {
             column = l.tokens.items[l.tokens.items.len - 1].column;
             l.lineNumber -= 1;
-        }
-        if (mem.eql(u8, str, "\n")) {
-            l.lineNumber += 1;
         }
         var newTok = Token{
             .ID = tok,
@@ -95,10 +121,13 @@ pub const Lexer = struct {
             .lineNumber = l.lineNumber,
             .column = column,
         };
-        log.Debugf("emit: {}\n", .{newTok});
+        try l.debugPrintToken("lexer emit", &newTok);
         try l.tokens.append(newTok);
         l.bufIndex = endOffset;
         l.tokenIndex = l.tokens.items.len - 1;
+        if (mem.eql(u8, str, "\n")) {
+            l.lineNumber += 1;
+        }
         return newTok;
     }
 

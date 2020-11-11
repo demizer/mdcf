@@ -19,13 +19,15 @@ pub fn stateCodeBlock(p: *Parser) !void {
             // Check the whitespace for tabs
             for (openTok.string) |val| {
                 if (val == '\t' or openTok.string.len >= 4) {
+                    log.Debug("Found a code block!");
                     hazCodeBlockWhitespace = true;
                     break;
                 }
             }
         }
         if (hazCodeBlockWhitespace and tok.ID == TokenId.Text) {
-            log.Debugf("parse block code inside openTok: '{}', tok: '{}'\n", .{ openTok.string, tok });
+            try p.lex.debugPrintToken("stateCodeBlock openTok", &openTok);
+            try p.lex.debugPrintToken("stateCodeBlock tok", &tok);
             p.state = Parser.State.CodeBlock;
             var newChild = Node{
                 .ID = Node.ID.CodeBlock,
@@ -54,7 +56,7 @@ pub fn stateCodeBlock(p: *Parser) !void {
             while (try p.lex.next()) |ntok| {
                 if (ntok.ID == TokenId.Whitespace and mem.eql(u8, ntok.string, "\n")) {
                     // FIXME: loop until de-indent
-                    log.Debugf("ntok {}\n", .{ntok});
+                    try p.lex.debugPrintToken("stateCodeBlock ntok", &ntok);
                     log.Debug("Found a newline, exiting state");
                     try buf.appendSlice(ntok.string);
                     try newChild.Children.append(Node{
