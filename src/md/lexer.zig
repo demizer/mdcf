@@ -93,6 +93,7 @@ pub const Lexer = struct {
     pub fn emit(l: *Lexer, tok: TokenId, startOffset: u32, endOffset: u32) !?Token {
         // log.Debugf("start: {} end: {}\n", .{ start, end });
         var str = l.buffer[startOffset..endOffset];
+        // log.Debugf("str: '{}'\n", .{str.len});
         var nEndOffset: u32 = endOffset - 1;
         if ((endOffset - startOffset) == 1 or nEndOffset < startOffset) {
             nEndOffset = startOffset;
@@ -221,17 +222,34 @@ pub const Lexer = struct {
 /// Get all the whitespace characters greedly.
 pub fn ruleWhitespace(t: *Lexer) !?Token {
     var index: u32 = t.bufIndex;
+    log.Debug("in ruleWhitespace");
     while (t.getChar(index)) |val| {
         if (t.isWhitespace(val)) {
+            // if (index > 0 and index != t.bufIndex) {
+            //     // log.Debug("here yo");
+            //     // log.Debugf("inside t.bufIndex: {} index: {}\n", .{ t.bufIndex, index });
+            //     // log.Debugf("char: {}, val: {}\n", .{ t.getChar(index - 1), val });
+            //     // if (index == t.bufIndex) {}
+            //     if (t.getChar(index - 1) != val) {
+            //         // log.Debug("here yo 2");
+            //         // different kind of space character, make separate tokens
+            //         // index += 1;
+            //         // t.bufIndex -= 1;
+            //         break;
+            //     }
+            // }
+            // log.Debugf("index: {}\n", .{index});
             index += 1;
+            // log.Debugf("index: {}\n", .{index});
+            // FIXME: merging these to if statements results in compiler bug
         } else {
             break;
         }
     }
+    // log.Debugf("t.bufIndex: {} index: {}\n", .{ t.bufIndex, index });
     if (index > t.bufIndex) {
         return t.emit(.Whitespace, t.bufIndex, index);
     }
-    // log.Debugf("t.bufIndex: {} index: {}\n", .{ t.bufIndex, index });
     return null;
 }
 

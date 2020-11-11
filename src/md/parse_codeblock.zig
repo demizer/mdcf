@@ -15,17 +15,20 @@ pub fn stateCodeBlock(p: *Parser) !void {
         //     tok.string,     tok.ID,     tok.string.len,
         // });
         var hazCodeBlockWhitespace: bool = false;
+        // var hazCodeBlockWhitespaceNextToken: bool = false;
         if (openTok.ID == TokenId.Whitespace and openTok.string.len >= 1) {
-            // Check the whitespace for tabs
-            for (openTok.string) |val| {
-                if (val == '\t' or openTok.string.len >= 4) {
-                    log.Debug("Found a code block!");
-                    hazCodeBlockWhitespace = true;
-                    break;
-                }
+            if (mem.indexOf(u8, openTok.string, "\t") != null or openTok.string.len >= 4) {
+                hazCodeBlockWhitespace = true;
+                // } else if (try p.lex.peekNext()) |peekTok| {
+                //     if (peekTok.ID == TokenId.Whitespace and peekTok.string.len >= 1) {
+                //         if (mem.indexOf(u8, peekTok.string, "\t") != null or peekTok.string.len >= 4) {
+                //             hazCodeBlockWhitespaceNextToken = true;
+                //         }
+                //     }
             }
         }
         if (hazCodeBlockWhitespace and tok.ID == TokenId.Text) {
+            log.Debug("Found a code block!");
             try p.lex.debugPrintToken("stateCodeBlock openTok", &openTok);
             try p.lex.debugPrintToken("stateCodeBlock tok", &tok);
             p.state = Parser.State.CodeBlock;
