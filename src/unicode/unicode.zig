@@ -49,8 +49,8 @@ test "Utf8View Index" {
     testing.expect(it.nextCodepointSlice() == null);
 
     testing.expect(std.mem.eql(u8, "n", s.index(0).?));
-    testing.expect(std.mem.eql(u8, "o", s.index(1).?));
     testing.expect(std.mem.eql(u8, "ë", s.index(2).?));
+    testing.expect(std.mem.eql(u8, "o", s.index(1).?));
     testing.expect(std.mem.eql(u8, "l", s.index(3).?));
 
     testing.expect(std.mem.eql(u8, &[_]u8{}, it.peek(1)));
@@ -76,14 +76,11 @@ pub const Utf8View = struct {
         var y: usize = 0;
         var it = view.iterator();
         var rune: ?[]const u8 = null;
-        while (y < i + 1) : (y += 1) {
-            if (it.nextCodepointSlice()) |r| {
-                rune = r;
-            }
-        }
-        if (rune) |nrune| {
+        while (y < i + 1) : (y += 1) if (it.nextCodepointSlice()) |r| {
+            rune = r;
+        };
+        if (rune) |nrune|
             _ = std.unicode.utf8Decode(nrune) catch unreachable;
-        }
         return rune;
     }
 
