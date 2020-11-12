@@ -24,6 +24,14 @@
 
 # Things To Do
 
+## Wed Nov 11 21:45 2020: INVESTIGATE: \n should be it's own token
+
+   This might make it hard to detect newlines? I might be searching the string for \n to detect
+   newlines.
+
+   const input = "foo\nbar \t\nbaz";
+   1605159814 [DEBUG]: lexer emit: { "ID": "Whitespace", "startOffset": 7, "endOffset": 9, "string": " \t\n", "lineNumber": 2, "column": 4 }
+
 ## Tue Nov 10 15:01 2020: add line number to log output
 
 ## Mon Nov 09 20:54 2020: combine lexer, parser, and html tests into one test function.

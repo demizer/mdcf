@@ -57,8 +57,13 @@ pub fn stateCodeBlock(p: *Parser) !void {
             };
 
             while (try p.lex.next()) |ntok| {
-                if (ntok.ID == TokenId.Whitespace and mem.eql(u8, ntok.string, "\n")) {
+                // if (ntok.ID == TokenId.Whitespace and mem.eql(u8, ntok.string, "\n")) {
+                if (ntok.ID == TokenId.Whitespace and ntok.column == 1) {
+                    continue;
+                }
+                if (ntok.ID == TokenId.EOF) {
                     // FIXME: loop until de-indent
+                    // FIXME: blanklines or eof should cause the state to exit
                     try p.lex.debugPrintToken("stateCodeBlock ntok", &ntok);
                     log.Debug("Found a newline, exiting state");
                     try buf.appendSlice(ntok.string);
@@ -80,6 +85,7 @@ pub fn stateCodeBlock(p: *Parser) !void {
             }
 
             newChild.PositionEnd = newChild.Children.items[newChild.Children.items.len - 1].PositionEnd;
+            p.lex.index = newChild.PositionEnd.Offset;
             try p.root.append(newChild);
             p.state = Parser.State.Start;
         }

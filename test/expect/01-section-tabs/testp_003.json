@@ -10,11 +10,11 @@
         "PositionEnd": {
             "Line": 2,
             "Column": 8,
-            "Offset": 15
+            "Offset": 16
         },
         "Children": [{
             "ID": "Text",
-            "Value": "a\ta\n    ὐ\ta\n",
+            "Value": "a\ta\nὐ\ta\n",
             "PositionStart": {
                 "Line": 1,
                 "Column": 5,
@@ -23,7 +23,7 @@
             "PositionEnd": {
                 "Line": 2,
                 "Column": 8,
-                "Offset": 15
+                "Offset": 16
             },
             "Children": [],
             "Level": 0

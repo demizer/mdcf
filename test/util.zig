@@ -46,9 +46,9 @@ const ValidationOutStream = struct {
                 \\{}
                 \\======== instead found this: =========
                 \\{}
-                \\======================================
+                \\======================================\n
             , .{
-                self.expected_remaining[0..bytes.len],
+                self.expected_remaining,
                 bytes,
             });
             return error.DifferentData;
@@ -59,7 +59,7 @@ const ValidationOutStream = struct {
                 \\{}
                 \\======== instead found this: =========
                 \\{}
-                \\======================================
+                \\======================================\n
             , .{
                 self.expected_remaining[0..bytes.len],
                 bytes,

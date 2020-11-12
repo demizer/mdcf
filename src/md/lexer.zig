@@ -92,7 +92,7 @@ pub const Lexer = struct {
         // log.Debugf("start: {} end: {}\n", .{ start, end });
         var str = l.view.slice(startOffset, endOffset);
         // check for diacritic
-        log.Debugf("str: '{}'\n", .{str.bytes});
+        log.Debugf("str: '{Z}'\n", .{str.bytes});
         var nEndOffset: u32 = endOffset - 1;
         if ((endOffset - startOffset) == 1 or nEndOffset < startOffset) {
             nEndOffset = startOffset;
@@ -141,7 +141,7 @@ pub const Lexer = struct {
             i = offset - 1;
         }
         // Get the last newline starting from offset
-        while (mem.eql(u8, char, "\n")) : (i -= 1) {
+        while (!mem.eql(u8, char, "\n")) : (i -= 1) {
             if (i == 0) {
                 break;
             }
@@ -155,7 +155,7 @@ pub const Lexer = struct {
         char = "";
         i = offset;
         // Get the next newline starting from offset
-        while (mem.eql(u8, char, "\n")) : (i += 1) {
+        while (!mem.eql(u8, char, "\n")) : (i += 1) {
             if (i == l.view.len) {
                 break;
             }
@@ -296,5 +296,24 @@ test "lexer: peekNext " {
 
     if (try t.next()) |tok| {
         assert(tok.ID == TokenId.Whitespace);
+    }
+}
+
+test "lexer: offsetToColumn" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const allocator = &arena.allocator;
+    const input = "foo\nbar \t\nbaz";
+    var t = try Lexer.init(allocator, input);
+    _ = try t.next();
+    _ = try t.next();
+    if (try t.next()) |tok| {
+        assert(tok.column == 1);
+    }
+    _ = try t.next();
+    _ = try t.next();
+    _ = try t.next();
+    if (try t.next()) |tok| {
+        assert(tok.column == 1);
     }
 }
