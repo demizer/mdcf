@@ -27,17 +27,20 @@ test "Test Example 001" {
     log.Debug("Testing lexer");
     const expectLexerJson = @embedFile("expect/01-section-tabs/testl_001.json");
     if (try testUtil.compareJsonExpect(allocator, expectLexerJson, p.lex.tokens.items)) |ajson| {
+        // log.Errorf("LEXER TEST FAILED! lexer tokens (in json):\n{}\n", .{ajson});
         std.os.exit(1);
     }
     log.Debug("Testing parser");
     const expectParserJson = @embedFile("expect/01-section-tabs/testp_001.json");
     if (try testUtil.compareJsonExpect(allocator, expectParserJson, p.root.items)) |ajson| {
+        // log.Errorf("PARSER TEST FAILED! parser tree (in json):\n{}\n", .{ajson});
         std.os.exit(1);
     }
     log.Debug("Testing html translator");
     const expectHtml = try testUtil.getTest(allocator, testNumber, testUtil.TestKey.html);
     defer allocator.free(expectHtml);
     if (try testUtil.compareHtmlExpect(allocator, expectHtml, &p.root)) |ahtml| {
+        // log.Errorf("HTML TRANSLATE TEST FAILED! html:\n{}\n", .{ahtml});
         std.os.exit(1);
     }
 }
@@ -54,17 +57,20 @@ test "Test Example 002" {
     log.Debug("Testing lexer");
     const expectLexerJson = @embedFile("expect/01-section-tabs/testl_002.json");
     if (try testUtil.compareJsonExpect(allocator, expectLexerJson, p.lex.tokens.items)) |ajson| {
+        log.Errorf("LEXER TEST FAILED! lexer tokens (in json):\n{}\n", .{ajson});
         std.os.exit(1);
     }
     log.Debug("Testing parser");
     const expectParserJson = @embedFile("expect/01-section-tabs/testp_002.json");
     if (try testUtil.compareJsonExpect(allocator, expectParserJson, p.root.items)) |ajson| {
+        // log.Errorf("PARSER TEST FAILED! parser tree (in json):\n{}\n", .{ajson});
         std.os.exit(1);
     }
     log.Debug("Testing html translator");
     const expectHtml = try testUtil.getTest(allocator, testNumber, testUtil.TestKey.html);
     defer allocator.free(expectHtml);
     if (try testUtil.compareHtmlExpect(allocator, expectHtml, &p.root)) |ahtml| {
+        // log.Errorf("HTML TRANSLATE TEST FAILED! html:\n{}\n", .{ahtml});
         std.os.exit(1);
     }
 }

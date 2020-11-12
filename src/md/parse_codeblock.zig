@@ -74,7 +74,7 @@ pub fn stateCodeBlock(p: *Parser) !void {
                         .PositionEnd = Node.Position{
                             .Line = ntok.lineNumber,
                             .Column = ntok.column,
-                            .Offset = ntok.endOffset,
+                            .Offset = ntok.endOffset - 1,
                         },
                         .Children = std.ArrayList(Node).init(p.allocator),
                         .Level = 0,
@@ -85,7 +85,7 @@ pub fn stateCodeBlock(p: *Parser) !void {
             }
 
             newChild.PositionEnd = newChild.Children.items[newChild.Children.items.len - 1].PositionEnd;
-            p.lex.index = newChild.PositionEnd.Offset;
+            // p.lex.index = newChild.PositionEnd.Offset;
             try p.root.append(newChild);
             p.state = Parser.State.Start;
         }
