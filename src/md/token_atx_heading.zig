@@ -1,18 +1,19 @@
 const std = @import("std");
+const mem = std.mem;
 const Lexer = @import("lexer.zig").Lexer;
 const Token = @import("token.zig").Token;
 
 pub fn ruleAtxHeader(l: *Lexer) !?Token {
-    var index: u32 = l.bufIndex;
-    while (l.getChar(index)) |val| {
-        if (val == '#') {
+    var index: u32 = l.index;
+    while (l.getRune(index)) |val| {
+        if (mem.eql(u8, "#", val)) {
             index += 1;
         } else {
             break;
         }
     }
-    if (index > l.bufIndex) {
-        return l.emit(.AtxHeader, l.bufIndex, index);
+    if (index > l.index) {
+        return l.emit(.AtxHeader, l.index, index);
     }
     return null;
 }
