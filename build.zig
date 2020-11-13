@@ -4,6 +4,7 @@ const Builder = @import("std").build.Builder;
 fn addWebviewDeps(exe: *std.build.LibExeObjStep, webviewObjStep: *std.build.Step) void {
     exe.step.dependOn(webviewObjStep);
     exe.addIncludeDir("src/webview");
+    exe.addLibPath("/usr/lib");
     exe.addObjectFile("src/webview/webview.o");
     exe.linkSystemLibrary("c++");
     exe.linkSystemLibrary("gtk+-3.0");
@@ -57,16 +58,18 @@ const WebviewLibraryStep = struct {
 
     fn make(step: *std.build.Step) !void {
         const self = @fieldParentPtr(WebviewLibraryStep, "step", step);
-        const libs = std.fmt.trim(try self.builder.exec(
+        const libs = std.mem.trim(u8, try self.builder.exec(
             &[_][]const u8{ "pkg-config", "--cflags", "--libs", "gtk+-3.0", "webkit2gtk-4.0" },
-        ));
+        ), &std.ascii.spaces);
 
         var cmd = std.ArrayList([]const u8).init(self.builder.allocator);
         defer cmd.deinit();
 
         try cmd.append("zig");
         try cmd.append("c++");
-        // try cmd.append("-v");
+        // try cmd.append("--version");
+        // try cmd.append("-print-search-dirs");
+        try cmd.append("-v");
         try cmd.append("-c");
         try cmd.append("src/webview/webview.cc");
         try cmd.append("-DWEBVIEW_GTK");
@@ -78,6 +81,6 @@ const WebviewLibraryStep = struct {
         try cmd.append("-o");
         try cmd.append("src/webview/webview.o");
 
-        _ = std.fmt.trim(try self.builder.exec(cmd.items));
+        _ = std.mem.trim(u8, try self.builder.exec(cmd.items), &std.ascii.spaces);
     }
 };

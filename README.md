@@ -10,7 +10,7 @@ Not yet applicable.
 
 ## Status
 
-3/649 tests of the CommonMark 0.29 test suite pass!
+4/649 tests of the CommonMark 0.29 test suite pass!
 
 ### Milestone #1
 
